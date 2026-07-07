@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Xadrez — Joga, Aprende, Domina o Tabuleiro</title>
+<meta name="description" content="Uma app de xadrez completa: joga 1 vs 1 no mesmo ecrã, desafia um bot com 4 níveis de dificuldade, aprende com um tutorial passo-a-passo e consulta a ajuda a qualquer momento. Feita em HTML, CSS e JavaScript." />
+<meta property="og:title" content="Xadrez" />
+<meta property="og:description" content="Joga, aprende, domina o tabuleiro." />
+<meta property="og:type" content="website" />
+<meta name="theme-color" content="#0b0a08" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%99%9A%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon">♚</span>
+      <span class="brand-name">Xadrez</span>
+    </div>
+    <div class="topbar-actions">
+      <button id="sound-toggle" class="icon-btn" type="button" aria-label="Som" title="Som">
+        <span id="sound-icon">🔊</span>
+      </button>
+      <button id="lang-toggle" class="lang-btn" type="button" aria-label="Mudar idioma">
+        <span class="flag" id="lang-flag">🇵🇹</span>
+        <span id="lang-label">PT</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+
+    <!-- ===================== MENU ===================== -->
+    <section class="screen is-active" id="screen-menu">
+      <div class="menu-hero">
+        <h1 class="menu-title" data-i18n="menuTitle">Xadrez</h1>
+        <p class="menu-subtitle" data-i18n="menuSubtitle">Escolhe um modo para começar</p>
+      </div>
+      <div class="mode-grid">
+        <button class="mode-card" id="mode-1v1" type="button">
+          <span class="mode-icon">🧑‍🤝‍🧑</span>
+          <span class="mode-name" data-i18n="mode1v1">1 vs 1</span>
+          <span class="mode-desc" data-i18n="mode1v1Desc">Dois jogadores, mesmo ecrã</span>
+        </button>
+        <button class="mode-card" id="mode-bot" type="button">
+          <span class="mode-icon">🤖</span>
+          <span class="mode-name" data-i18n="modeBot">Contra o Bot</span>
+          <span class="mode-desc" data-i18n="modeBotDesc">Escolhe o nível da IA</span>
+        </button>
+        <button class="mode-card" id="mode-tutorial" type="button">
+          <span class="mode-icon">🎓</span>
+          <span class="mode-name" data-i18n="modeTutorial">Tutorial</span>
+          <span class="mode-desc" data-i18n="modeTutorialDesc">Aprende a jogar por níveis</span>
+        </button>
+        <button class="mode-card" id="mode-help" type="button">
+          <span class="mode-icon">❓</span>
+          <span class="mode-name" data-i18n="modeHelp">Ajuda</span>
+          <span class="mode-desc" data-i18n="modeHelpDesc">Regras e controlos</span>
+        </button>
+      </div>
+
+      <div class="difficulty-panel" id="difficulty-panel">
+        <p class="difficulty-title" data-i18n="chooseDifficulty">Escolhe o nível do bot</p>
+        <div class="difficulty-grid">
+          <button class="difficulty-btn" data-level="beginner" type="button">
+            <span class="difficulty-stars">★☆☆☆</span>
+            <span data-i18n="levelBeginner">Iniciante</span>
+          </button>
+          <button class="difficulty-btn" data-level="easy" type="button">
+            <span class="difficulty-stars">★★☆☆</span>
+            <span data-i18n="levelEasy">Fácil</span>
+          </button>
+          <button class="difficulty-btn" data-level="medium" type="button">
+            <span class="difficulty-stars">★★★☆</span>
+            <span data-i18n="levelMedium">Médio</span>
+          </button>
+          <button class="difficulty-btn" data-level="hard" type="button">
+            <span class="difficulty-stars">★★★★</span>
+            <span data-i18n="levelHard">Difícil</span>
+          </button>
+        </div>
+        <button class="ghost-btn" id="difficulty-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
+      </div>
+    </section>
+
+    <!-- ===================== GAME ===================== -->
+    <section class="screen" id="screen-game">
+      <div class="game-layout">
+        <div class="board-wrap">
+          <div class="player-tag player-tag-top" id="player-tag-black">
+            <span id="black-label" data-i18n="blackPlayer">Pretas</span>
+          </div>
+          <div class="board" id="board" role="grid" aria-label="Tabuleiro de xadrez"></div>
+          <div class="player-tag player-tag-bottom" id="player-tag-white">
+            <span id="white-label" data-i18n="whitePlayer">Brancas</span>
+          </div>
+        </div>
+
+        <aside class="side-panel">
+          <div class="status-card">
+            <p class="status-turn" id="status-turn" data-i18n="turnWhite">Vez das Brancas</p>
+            <p class="status-note" id="status-note"></p>
+          </div>
+
+          <div class="history-card">
+            <p class="panel-title" data-i18n="moveHistory">Histórico de Lances</p>
+            <ol class="move-list" id="move-list"></ol>
+          </div>
+
+          <div class="panel-buttons">
+            <button class="ghost-btn" id="btn-flip" type="button" data-i18n="flipBoard">🔄 Inverter</button>
+            <button class="ghost-btn" id="btn-new-game" type="button" data-i18n="newGame">♻️ Novo Jogo</button>
+            <button class="ghost-btn" id="btn-back-menu" type="button" data-i18n="backToMenu">⬅️ Menu</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===================== TUTORIAL ===================== -->
+    <section class="screen" id="screen-tutorial">
+      <div class="tutorial-layout">
+        <nav class="lesson-nav" id="lesson-nav" aria-label="Lições"></nav>
+        <div class="lesson-content">
+          <div class="lesson-header">
+            <h2 class="lesson-title" id="lesson-title"></h2>
+            <p class="lesson-text" id="lesson-text"></p>
+          </div>
+          <div class="lesson-board-wrap">
+            <div class="board lesson-board" id="lesson-board" role="grid" aria-label="Tabuleiro de exemplo"></div>
+            <p class="lesson-hint" id="lesson-hint"></p>
+          </div>
+          <div class="lesson-nav-buttons">
+            <button class="ghost-btn" id="lesson-prev" type="button" data-i18n="prevLesson">◀ Anterior</button>
+            <button class="ghost-btn" id="lesson-next" type="button" data-i18n="nextLesson">Seguinte ▶</button>
+            <button class="ghost-btn" id="tutorial-back-menu" type="button" data-i18n="backToMenu">⬅️ Menu</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== HELP ===================== -->
+    <section class="screen" id="screen-help">
+      <div class="help-layout">
+        <h2 class="help-title" data-i18n="helpTitle">Ajuda</h2>
+        <div class="help-content" id="help-content"></div>
+        <button class="ghost-btn" id="help-back-menu" type="button" data-i18n="backToMenu">⬅️ Menu</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <span data-i18n="footerBy">Desenvolvido por</span>
+      <strong>David Arsénio Martins</strong>
+    </p>
+    <div class="footer-links">
+      <a href="https://ividi.dev/" target="_blank" rel="noopener noreferrer">ividi.dev</a>
+      <span class="dot">·</span>
+      <a href="https://github.com/VidiPT89/Xadrez" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </footer>
+</div>
+
+<div class="modal-overlay is-open" id="intro-overlay">
+  <div class="modal intro-modal">
+    <span class="modal-icon">♚</span>
+    <h2 class="modal-title" data-i18n="introTitle">Xadrez</h2>
+    <p class="modal-text" data-i18n="introText">Joga 1 vs 1, desafia o bot, aprende as regras e as estratégias — tudo num só tabuleiro.</p>
+    <div class="intro-credit">
+      <p class="intro-credit-line">
+        <span data-i18n="footerBy">Desenvolvido por</span> <strong>David Arsénio Martins</strong>
+      </p>
+      <div class="intro-links">
+        <a href="https://ividi.dev/" target="_blank" rel="noopener noreferrer">ividi.dev</a>
+        <span class="dot">·</span>
+        <a href="https://github.com/VidiPT89/Xadrez" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </div>
+    <button class="ghost-btn intro-skip" id="intro-play" type="button" data-i18n="introSkipBtn">Saltar</button>
+    <div class="intro-progress"><span class="intro-progress-fill" id="intro-progress-fill"></span></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="result-overlay">
+  <div class="modal result-modal">
+    <span class="modal-icon" id="result-icon">🏆</span>
+    <h2 class="modal-title" id="result-title"></h2>
+    <p class="modal-text" id="result-text"></p>
+    <div class="result-buttons">
+      <button class="ghost-btn" id="result-rematch" type="button" data-i18n="newGame">♻️ Novo Jogo</button>
+      <button class="ghost-btn" id="result-menu" type="button" data-i18n="backToMenu">⬅️ Menu</button>
+    </div>
+  </div>
+</div>
+
+<div class="promo-overlay" id="promo-overlay">
+  <div class="promo-modal">
+    <p class="promo-title" id="promo-title"></p>
+    <div class="promo-choices" id="promo-choices"></div>
+  </div>
+</div>
+
+<script src="chess-engine.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
