@@ -14,7 +14,7 @@
   --square-light-hi: #f4e6a8;
   --square-dark-hi: #8a6a3a;
   --font-body: "Sora", system-ui, sans-serif;
-  --font-display: "Playfair Display", serif;
+  --font-display: "Sora", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
   --radius: 16px;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
@@ -321,17 +321,34 @@ button { font-family: inherit; }
   user-select: none;
 }
 
-.square.light { background: var(--square-light); }
-.square.dark { background: var(--square-dark); }
+.square.light {
+  background:
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 7px),
+    linear-gradient(155deg, #f2e6c9 0%, #e9d7ab 45%, #f0e3c2 70%, #e3d09f 100%);
+}
+.square.dark {
+  background:
+    repeating-linear-gradient(100deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 7px),
+    linear-gradient(155deg, #7c563b 0%, #603d27 45%, #714a30 70%, #573a25 100%);
+}
+
+.sprite-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
 
 .square .piece {
-  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+  width: 74%;
+  height: 74%;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.5));
   transition: transform 0.12s;
   pointer-events: none;
 }
 
-.square.piece-white .piece { color: #fbf6e9; -webkit-text-stroke: 1px #2a2213; }
-.square.piece-black .piece { color: #14100a; -webkit-text-stroke: 1px #7a6a44; }
+.square.piece-white .piece { fill: url(#grad-white); stroke: #2a2213; stroke-width: 1.5; }
+.square.piece-black .piece { fill: url(#grad-black); stroke: #4a3a22; stroke-width: 1.5; }
 
 .square.is-selected { box-shadow: inset 0 0 0 4px var(--gold); }
 .square.is-last-move { box-shadow: inset 0 0 0 4px rgba(212, 175, 55, 0.5); }
@@ -608,13 +625,24 @@ button { font-family: inherit; }
 .promo-choices { display: flex; gap: 12px; }
 
 .promo-choice {
-  font-size: 2.4rem;
   background: var(--bg-soft);
   border: 1px solid var(--panel-border);
   border-radius: 12px;
   padding: 10px 16px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+.promo-choice .piece {
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+}
+
+.promo-choice.piece-white .piece { fill: url(#grad-white); stroke: #2a2213; stroke-width: 1.5; }
+.promo-choice.piece-black .piece { fill: url(#grad-black); stroke: #4a3a22; stroke-width: 1.5; }
 
 .promo-choice:hover { border-color: var(--gold); }
 

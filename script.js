@@ -1,6 +1,16 @@
 /* ==================== Xadrez — app logic ==================== */
 
-const PIECE_GLYPH = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function pieceIcon(type) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("class", "piece");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  const use = document.createElementNS(SVG_NS, "use");
+  use.setAttribute("href", `#piece-${type}`);
+  svg.appendChild(use);
+  return svg;
+}
 
 /* ==================== i18n ==================== */
 const STRINGS = {
@@ -196,14 +206,29 @@ el("lang-toggle").addEventListener("click", () => setLanguage(lang === "pt" ? "e
     }));
   }
 
+  let t = 0;
+
   function frame() {
+    t += 0.008;
     ctx.clearRect(0, 0, w, h);
-    const grad = ctx.createRadialGradient(w / 2, h * 0.15, 0, w / 2, h * 0.15, Math.max(w, h) * 0.7);
-    grad.addColorStop(0, "rgba(212,175,55,0.08)");
+    const pulse = 0.7 + Math.sin(t) * 0.3;
+
+    const grad = ctx.createRadialGradient(w / 2, h * 0.15, 0, w / 2, h * 0.15, Math.max(w, h) * 0.75);
+    grad.addColorStop(0, `rgba(212,175,55,${0.16 * pulse})`);
+    grad.addColorStop(0.5, `rgba(212,175,55,${0.05 * pulse})`);
     grad.addColorStop(1, "rgba(11,10,8,0)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(212,175,55,0.5)";
+
+    const grad2 = ctx.createRadialGradient(w * 0.85, h * 0.9, 0, w * 0.85, h * 0.9, Math.max(w, h) * 0.5);
+    grad2.addColorStop(0, `rgba(232,199,101,${0.08 * pulse})`);
+    grad2.addColorStop(1, "rgba(11,10,8,0)");
+    ctx.fillStyle = grad2;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = "#e8c765";
+    ctx.shadowColor = "rgba(232,199,101,0.9)";
+    ctx.shadowBlur = 6;
     for (const p of particles) {
       ctx.globalAlpha = p.a;
       ctx.beginPath();
@@ -212,6 +237,7 @@ el("lang-toggle").addEventListener("click", () => setLanguage(lang === "pt" ? "e
       p.y -= p.vy;
       if (p.y < -5) p.y = h + 5;
     }
+    ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     requestAnimationFrame(frame);
   }
@@ -285,10 +311,7 @@ class BoardController {
         cell.className = "square " + ((r + c) % 2 === 0 ? "light" : "dark");
         cell.innerHTML = "";
         if (piece) {
-          const span = document.createElement("span");
-          span.className = "piece";
-          span.textContent = PIECE_GLYPH[piece.type];
-          cell.appendChild(span);
+          cell.appendChild(pieceIcon(piece.type));
           cell.classList.add(piece.color === "w" ? "piece-white" : "piece-black");
         }
         if (this.selected && this.selected.r === r && this.selected.c === c) cell.classList.add("is-selected");
@@ -351,7 +374,7 @@ class BoardController {
     ["q", "r", "b", "n"].forEach((type) => {
       const btn = document.createElement("button");
       btn.className = "promo-choice";
-      btn.textContent = PIECE_GLYPH[type];
+      btn.appendChild(pieceIcon(type));
       btn.classList.add(color === "w" ? "piece-white" : "piece-black");
       btn.addEventListener("click", () => {
         overlay.classList.remove("is-open");
