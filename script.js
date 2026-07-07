@@ -426,7 +426,7 @@ class BoardController {
     piece.style.transform = `translate(${dx}px, ${dy}px)`;
     void piece.getBoundingClientRect();
     requestAnimationFrame(() => {
-      piece.style.transition = "transform 180ms ease";
+      piece.style.transition = "transform 380ms ease";
       piece.style.transform = "translate(0, 0)";
     });
   }
@@ -542,16 +542,24 @@ function onMainMove(record) {
   }
 }
 
+const BOT_MIN_DELAY_MS = 550; // so the bot always feels like it "thought" for a moment
+
 function requestBotMove() {
   mainBoard.locked = true;
   renderStatus();
   const myRequest = ++requestCounter;
   const state = mainBoard.game.toState();
+  const startedAt = performance.now();
   getWorker().onmessage = (e) => {
     if (e.data.requestId !== myRequest) return;
-    mainBoard.locked = false;
-    if (e.data.move) mainBoard.applyExternalMove(e.data.move);
-    renderStatus();
+    const elapsed = performance.now() - startedAt;
+    const wait = Math.max(0, BOT_MIN_DELAY_MS - elapsed);
+    setTimeout(() => {
+      if (e.data.requestId !== requestCounter) return;
+      mainBoard.locked = false;
+      if (e.data.move) mainBoard.applyExternalMove(e.data.move);
+      renderStatus();
+    }, wait);
   };
   getWorker().postMessage({ state, difficulty: botLevel, requestId: myRequest });
 }
