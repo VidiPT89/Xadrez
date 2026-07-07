@@ -270,6 +270,7 @@ button { font-family: inherit; }
 .ghost-btn:hover { border-color: var(--gold); background: rgba(212, 175, 55, 0.08); }
 .ghost-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .ghost-btn:disabled:hover { border-color: var(--panel-border); background: transparent; }
+.ghost-btn.is-hidden { display: none; }
 
 /* ==================== Game layout ==================== */
 .game-layout {

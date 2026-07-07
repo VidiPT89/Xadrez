@@ -34,6 +34,7 @@ const STRINGS = {
     blackPlayer: "Pretas",
     whitePlayer: "Brancas",
     moveHistory: "Histórico de Lances",
+    undoMove: "↩️ Voltar Atrás",
     flipBoard: "🔄 Inverter",
     newGame: "♻️ Novo Jogo",
     backToMenu: "⬅️ Menu",
@@ -82,6 +83,7 @@ const STRINGS = {
     blackPlayer: "Black",
     whitePlayer: "White",
     moveHistory: "Move History",
+    undoMove: "↩️ Undo",
     flipBoard: "🔄 Flip",
     newGame: "♻️ New Game",
     backToMenu: "⬅️ Menu",
@@ -387,17 +389,46 @@ class BoardController {
 
   _finalizeMove(move) {
     const wasCapture = move.capture;
+    const fromRect = this._cellFor(move.from.r, move.from.c).getBoundingClientRect();
+    let rookAnim = null;
+    if (move.castle) {
+      const rank = move.from.r;
+      const rookFromC = move.castle === "K" ? 7 : 0;
+      const rookToC = move.castle === "K" ? 5 : 3;
+      rookAnim = { fromRect: this._cellFor(rank, rookFromC).getBoundingClientRect(), r: rank, c: rookToC };
+    }
+
     const record = this.game.makeMove({ from: move.from, to: move.to, promotion: move.promotion || null });
     if (!record) return;
     this.selected = null;
     this.legalTargets = [];
     this.lastMove = { from: move.from, to: move.to };
     this.render();
+    this._slidePiece(this._cellFor(move.to.r, move.to.c), fromRect);
+    if (rookAnim) this._slidePiece(this._cellFor(rookAnim.r, rookAnim.c), rookAnim.fromRect);
     if (record.status === "check") SFX.check();
     else if (this.game.isGameOver()) SFX.end();
     else if (wasCapture) SFX.capture();
     else SFX.move();
     if (this.onAfterMove) this.onAfterMove(record);
+  }
+
+  /** FLIP-technique slide: the piece already sits at its final DOM position, so we offset it
+   * back to where it started (no transition) and then animate the offset away to zero. */
+  _slidePiece(cell, fromRect) {
+    const piece = cell.querySelector(".piece");
+    if (!piece) return;
+    const toRect = cell.getBoundingClientRect();
+    const dx = fromRect.left - toRect.left;
+    const dy = fromRect.top - toRect.top;
+    if (!dx && !dy) return;
+    piece.style.transition = "none";
+    piece.style.transform = `translate(${dx}px, ${dy}px)`;
+    void piece.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      piece.style.transition = "transform 180ms ease";
+      piece.style.transform = "translate(0, 0)";
+    });
   }
 
   applyExternalMove(move) {
@@ -423,9 +454,24 @@ function newMainGame() {
   mainBoard.setGame(game);
   mainBoard.locked = false;
   requestCounter++;
+  el("btn-undo").classList.toggle("is-hidden", currentMode !== "bot");
   renderStatus();
   renderMoveList();
   el("result-overlay").classList.remove("is-open");
+}
+
+function undoLastTurn() {
+  if (currentMode !== "bot" || mainBoard.locked || !mainBoard.game || mainBoard.game.history.length === 0) return;
+  const removeCount = mainBoard.game.history.length % 2 === 0 ? 2 : 1;
+  mainBoard.game.undoPlies(removeCount);
+  mainBoard.selected = null;
+  mainBoard.legalTargets = [];
+  mainBoard.lastMove = null;
+  mainBoard.render();
+  renderMoveList();
+  renderStatus();
+  el("result-overlay").classList.remove("is-open");
+  SFX.click();
 }
 
 function renderStatus() {
@@ -434,6 +480,7 @@ function renderStatus() {
   el("status-turn").textContent = mainBoard.game.turn === "w" ? t("turnWhite") : t("turnBlack");
   el("player-tag-white").classList.toggle("is-active", mainBoard.game.turn === "w" && !status.over);
   el("player-tag-black").classList.toggle("is-active", mainBoard.game.turn === "b" && !status.over);
+  el("btn-undo").disabled = mainBoard.locked || mainBoard.game.history.length === 0;
   let note = "";
   if (mainBoard.locked) note = t("thinking");
   else if (status.key === "check") note = t("inCheck");
@@ -547,6 +594,7 @@ el("tutorial-back-menu").addEventListener("click", () => showScreen("screen-menu
 el("help-back-menu").addEventListener("click", () => showScreen("screen-menu"));
 el("btn-new-game").addEventListener("click", () => newMainGame());
 el("btn-flip").addEventListener("click", () => mainBoard.setFlipped(!mainBoard.flipped));
+el("btn-undo").addEventListener("click", () => undoLastTurn());
 el("result-rematch").addEventListener("click", () => { el("result-overlay").classList.remove("is-open"); newMainGame(); });
 el("result-menu").addEventListener("click", () => { el("result-overlay").classList.remove("is-open"); showScreen("screen-menu"); });
 

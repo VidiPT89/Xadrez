@@ -501,6 +501,25 @@ class ChessGame {
     if (this.isInCheck(this.turn)) return { over: false, key: "check", winner: null };
     return { over: false, key: "playing", winner: null };
   }
+
+  /** Rebuilds state by replaying the history minus the last `n` plies. */
+  undoPlies(n) {
+    const keep = this.history.slice(0, Math.max(0, this.history.length - n));
+    const fresh = new ChessGame();
+    for (const record of keep) {
+      fresh.makeMove({ from: record.from, to: record.to, promotion: record.promotion });
+    }
+    this.board = fresh.board;
+    this.turn = fresh.turn;
+    this.castling = fresh.castling;
+    this.enPassant = fresh.enPassant;
+    this.halfmoveClock = fresh.halfmoveClock;
+    this.fullmoveNumber = fresh.fullmoveNumber;
+    this.history = fresh.history;
+    this.positionCounts = fresh.positionCounts;
+    this.result = fresh.result;
+    this.winner = fresh.winner;
+  }
 }
 
 if (typeof module !== "undefined" && module.exports) {
