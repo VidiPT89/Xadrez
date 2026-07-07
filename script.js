@@ -35,6 +35,7 @@ const STRINGS = {
     whitePlayer: "Brancas",
     moveHistory: "Histórico de Lances",
     undoMove: "↩️ Voltar Atrás",
+    redoMove: "↪️ Avançar",
     flipBoard: "🔄 Inverter",
     newGame: "♻️ Novo Jogo",
     backToMenu: "⬅️ Menu",
@@ -84,6 +85,7 @@ const STRINGS = {
     whitePlayer: "White",
     moveHistory: "Move History",
     undoMove: "↩️ Undo",
+    redoMove: "↪️ Redo",
     flipBoard: "🔄 Flip",
     newGame: "♻️ New Game",
     backToMenu: "⬅️ Menu",
@@ -449,12 +451,16 @@ function getWorker() {
   return aiWorker;
 }
 
+let redoStack = [];
+
 function newMainGame() {
   const game = new ChessGame();
   mainBoard.setGame(game);
   mainBoard.locked = false;
   requestCounter++;
+  redoStack = [];
   el("btn-undo").classList.toggle("is-hidden", currentMode !== "bot");
+  el("btn-redo").classList.toggle("is-hidden", currentMode !== "bot");
   renderStatus();
   renderMoveList();
   el("result-overlay").classList.remove("is-open");
@@ -463,6 +469,8 @@ function newMainGame() {
 function undoLastTurn() {
   if (currentMode !== "bot" || mainBoard.locked || !mainBoard.game || mainBoard.game.history.length === 0) return;
   const removeCount = mainBoard.game.history.length % 2 === 0 ? 2 : 1;
+  const removed = mainBoard.game.history.slice(-removeCount).map((r) => ({ from: r.from, to: r.to, promotion: r.promotion }));
+  redoStack.push(removed);
   mainBoard.game.undoPlies(removeCount);
   mainBoard.selected = null;
   mainBoard.legalTargets = [];
@@ -474,6 +482,20 @@ function undoLastTurn() {
   SFX.click();
 }
 
+function redoLastTurn() {
+  if (currentMode !== "bot" || mainBoard.locked || redoStack.length === 0) return;
+  const batch = redoStack.pop();
+  for (const m of batch) {
+    mainBoard.game.makeMove({ from: m.from, to: m.to, promotion: m.promotion });
+  }
+  const last = batch[batch.length - 1];
+  mainBoard.lastMove = { from: last.from, to: last.to };
+  mainBoard.render();
+  renderMoveList();
+  renderStatus();
+  SFX.click();
+}
+
 function renderStatus() {
   if (!mainBoard.game) return;
   const status = mainBoard.game.gameStatusText();
@@ -481,6 +503,7 @@ function renderStatus() {
   el("player-tag-white").classList.toggle("is-active", mainBoard.game.turn === "w" && !status.over);
   el("player-tag-black").classList.toggle("is-active", mainBoard.game.turn === "b" && !status.over);
   el("btn-undo").disabled = mainBoard.locked || mainBoard.game.history.length === 0;
+  el("btn-redo").disabled = mainBoard.locked || redoStack.length === 0;
   let note = "";
   if (mainBoard.locked) note = t("thinking");
   else if (status.key === "check") note = t("inCheck");
@@ -531,6 +554,7 @@ function showResultModal() {
 }
 
 function onMainMove(record) {
+  redoStack = [];
   renderMoveList();
   renderStatus();
   if (mainBoard.game.isGameOver()) {
@@ -603,6 +627,7 @@ el("help-back-menu").addEventListener("click", () => showScreen("screen-menu"));
 el("btn-new-game").addEventListener("click", () => newMainGame());
 el("btn-flip").addEventListener("click", () => mainBoard.setFlipped(!mainBoard.flipped));
 el("btn-undo").addEventListener("click", () => undoLastTurn());
+el("btn-redo").addEventListener("click", () => redoLastTurn());
 el("result-rematch").addEventListener("click", () => { el("result-overlay").classList.remove("is-open"); newMainGame(); });
 el("result-menu").addEventListener("click", () => { el("result-overlay").classList.remove("is-open"); showScreen("screen-menu"); });
 

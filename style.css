@@ -416,6 +416,15 @@ button { font-family: inherit; }
   gap: 10px;
 }
 
+.panel-buttons-row {
+  display: flex;
+  gap: 10px;
+}
+
+.panel-buttons-row .ghost-btn {
+  flex: 1;
+}
+
 /* ==================== Tutorial ==================== */
 .tutorial-layout {
   display: flex;
