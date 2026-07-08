@@ -304,8 +304,8 @@ button { font-family: inherit; }
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   grid-template-rows: repeat(8, 1fr);
-  width: min(84vw, 560px);
-  height: min(84vw, 560px);
+  width: min(90vw, 660px);
+  height: min(90vw, 660px);
   border-radius: 10px;
   overflow: hidden;
   border: 3px solid var(--gold);
