@@ -674,6 +674,7 @@ el("mode-1v1").addEventListener("click", () => {
 
 el("mode-bot").addEventListener("click", () => {
   el("difficulty-panel").classList.add("is-open");
+  el("difficulty-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
 
 el("difficulty-cancel").addEventListener("click", () => {
@@ -820,6 +821,7 @@ el("mode-multiplayer").addEventListener("click", () => {
   showMpError("");
   showMpView("choice");
   el("multiplayer-panel").classList.add("is-open");
+  el("multiplayer-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
 el("mp-choice-cancel").addEventListener("click", () => el("multiplayer-panel").classList.remove("is-open"));
 el("mp-create-btn").addEventListener("click", () => handleCreateRoom());
