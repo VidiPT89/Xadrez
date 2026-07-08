@@ -8,5 +8,5 @@ window.__FIREBASE_CONFIG__ = {
   projectId: "xadrez-f264a",
   storageBucket: "xadrez-f264a.firebasestorage.app",
   messagingSenderId: "10936409163",
-  appId: "1:10936409163:web:7177557495270058a01ce",
+  appId: "1:10936409163:web:71775574995270058a01ce",
 };
