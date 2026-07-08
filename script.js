@@ -63,6 +63,33 @@ const STRINGS = {
     resultDrawMatText: "Nenhum dos lados tem material suficiente para dar mate.",
     promoTitle: "Promover peão a:",
     lessonHintClick: "Clica numa peça para veres os seus movimentos.",
+    modeMultiplayer: "Multijogador",
+    modeMultiplayerDesc: "Joga online com um amigo",
+    mpTitle: "Multijogador Online",
+    mpNotConfigured: "O multijogador ainda não está configurado.",
+    mpCreateRoom: "➕ Criar Sala",
+    mpJoinRoom: "🔑 Entrar numa Sala",
+    mpEnterCode: "Introduz o código da sala",
+    mpJoin: "Entrar",
+    mpWaitingTitle: "À espera de um adversário…",
+    mpShareLink: "🔗 Partilhar Link",
+    mpShareCopied: "✅ Link copiado!",
+    mpShareText: "Vem jogar Xadrez comigo!",
+    mpErrorNotFound: "Essa sala não existe.",
+    mpErrorFull: "Essa sala já está cheia.",
+    mpErrorFinished: "Essa partida já terminou.",
+    mpErrorGeneric: "Não foi possível entrar na sala. Verifica o código.",
+    mpOpponentOnline: "🟢 Adversário online",
+    mpOpponentOffline: "⚪ Adversário offline",
+    mpWaitingOpponent: "⏳ À espera do adversário…",
+    resignGame: "🏳️ Desistir",
+    resignConfirmText: "Tens a certeza que queres desistir da partida?",
+    chatTitle: "Chat",
+    chatPlaceholder: "Escreve uma mensagem…",
+    resultOpponentResignedTitle: "Vitória!",
+    resultOpponentResignedText: "O teu adversário desistiu da partida.",
+    resultYouResignedTitle: "Desististe",
+    resultYouResignedText: "Desististe da partida.",
   },
   en: {
     menuTitle: "Chess",
@@ -113,6 +140,33 @@ const STRINGS = {
     resultDrawMatText: "Neither side has enough material to checkmate.",
     promoTitle: "Promote pawn to:",
     lessonHintClick: "Tap a piece to see how it moves.",
+    modeMultiplayer: "Multiplayer",
+    modeMultiplayerDesc: "Play online with a friend",
+    mpTitle: "Online Multiplayer",
+    mpNotConfigured: "Multiplayer isn't configured yet.",
+    mpCreateRoom: "➕ Create Room",
+    mpJoinRoom: "🔑 Join a Room",
+    mpEnterCode: "Enter the room code",
+    mpJoin: "Join",
+    mpWaitingTitle: "Waiting for an opponent…",
+    mpShareLink: "🔗 Share Link",
+    mpShareCopied: "✅ Link copied!",
+    mpShareText: "Come play Chess with me!",
+    mpErrorNotFound: "That room doesn't exist.",
+    mpErrorFull: "That room is already full.",
+    mpErrorFinished: "That match has already ended.",
+    mpErrorGeneric: "Couldn't join the room. Check the code.",
+    mpOpponentOnline: "🟢 Opponent online",
+    mpOpponentOffline: "⚪ Opponent offline",
+    mpWaitingOpponent: "⏳ Waiting for opponent…",
+    resignGame: "🏳️ Resign",
+    resignConfirmText: "Are you sure you want to resign this game?",
+    chatTitle: "Chat",
+    chatPlaceholder: "Type a message…",
+    resultOpponentResignedTitle: "Victory!",
+    resultOpponentResignedText: "Your opponent resigned the game.",
+    resultYouResignedTitle: "You resigned",
+    resultYouResignedText: "You resigned the game.",
   },
 };
 
@@ -126,6 +180,9 @@ function applyTranslations() {
   document.documentElement.lang = lang === "pt" ? "pt-PT" : "en";
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     el.textContent = t(el.getAttribute("data-i18n"));
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
   });
   el("lang-flag").textContent = lang === "pt" ? "🇵🇹" : "🇬🇧";
   el("lang-label").textContent = lang.toUpperCase();
@@ -254,10 +311,11 @@ el("lang-toggle").addEventListener("click", () => setLanguage(lang === "pt" ? "e
 
 /* ==================== Board controller (reused for main game + lessons) ==================== */
 class BoardController {
-  constructor(boardEl, { interactive = true, onAfterMove = null } = {}) {
+  constructor(boardEl, { interactive = true, onAfterMove = null, networked = false } = {}) {
     this.boardEl = boardEl;
     this.interactive = interactive;
     this.onAfterMove = onAfterMove;
+    this.networked = networked;
     this.game = null;
     this.selected = null;
     this.legalTargets = [];
@@ -334,6 +392,7 @@ class BoardController {
 
   _onSquareClick(dr, dc) {
     if (!this.interactive || this.locked || !this.game || this.game.isGameOver()) return;
+    if (this.networked && currentMode === "multiplayer" && window.MP && this.game.turn !== window.MP.myColor) return;
     const [r, c] = this.flipped ? [7 - dr, 7 - dc] : [dr, dc];
     const piece = this.game.pieceAt(r, c);
 
@@ -389,7 +448,7 @@ class BoardController {
     overlay.classList.add("is-open");
   }
 
-  _finalizeMove(move) {
+  _finalizeMove(move, { external = false } = {}) {
     const wasCapture = move.capture;
     const fromRect = this._cellFor(move.from.r, move.from.c).getBoundingClientRect();
     let rookAnim = null;
@@ -412,7 +471,7 @@ class BoardController {
     else if (this.game.isGameOver()) SFX.end();
     else if (wasCapture) SFX.capture();
     else SFX.move();
-    if (this.onAfterMove) this.onAfterMove(record);
+    if (this.onAfterMove) this.onAfterMove(record, { external });
   }
 
   /** FLIP-technique slide: the piece already sits at its final DOM position, so we offset it
@@ -434,13 +493,13 @@ class BoardController {
   }
 
   applyExternalMove(move) {
-    this._finalizeMove({ from: move.from, to: move.to, promotion: move.promotion, capture: !!this.game.pieceAt(move.to.r, move.to.c) });
+    this._finalizeMove({ from: move.from, to: move.to, promotion: move.promotion, capture: !!this.game.pieceAt(move.to.r, move.to.c) }, { external: true });
   }
 }
 
 /* ==================== Main game state ==================== */
-const mainBoard = new BoardController(el("board"), { interactive: true, onAfterMove: onMainMove });
-let currentMode = "1v1"; // '1v1' | 'bot'
+const mainBoard = new BoardController(el("board"), { interactive: true, onAfterMove: onMainMove, networked: true });
+let currentMode = "1v1"; // '1v1' | 'bot' | 'multiplayer'
 let botLevel = "medium";
 const BOT_COLOR = "b";
 let aiWorker = null;
@@ -461,6 +520,11 @@ function newMainGame() {
   redoStack = [];
   el("btn-undo").classList.toggle("is-hidden", currentMode !== "bot");
   el("btn-redo").classList.toggle("is-hidden", currentMode !== "bot");
+  el("btn-resign").classList.toggle("is-hidden", currentMode !== "multiplayer");
+  el("btn-new-game").classList.toggle("is-hidden", currentMode === "multiplayer");
+  el("chat-card").classList.toggle("is-hidden", currentMode !== "multiplayer");
+  el("mp-presence").classList.toggle("is-hidden", currentMode !== "multiplayer");
+  el("result-rematch").classList.toggle("is-hidden", currentMode === "multiplayer");
   renderStatus();
   renderMoveList();
   el("result-overlay").classList.remove("is-open");
@@ -507,6 +571,7 @@ function renderStatus() {
   let note = "";
   if (mainBoard.locked) note = t("thinking");
   else if (status.key === "check") note = t("inCheck");
+  else if (currentMode === "multiplayer" && !status.over && window.MP && mainBoard.game.turn !== window.MP.myColor) note = t("mpWaitingOpponent");
   el("status-note").textContent = note;
 }
 
@@ -525,6 +590,7 @@ function renderMoveList() {
 }
 
 function showResultModal() {
+  el("result-rematch").classList.toggle("is-hidden", currentMode === "multiplayer");
   const status = mainBoard.game.gameStatusText();
   const icon = el("result-icon");
   const title = el("result-title");
@@ -553,7 +619,7 @@ function showResultModal() {
   el("result-overlay").classList.add("is-open");
 }
 
-function onMainMove(record) {
+function onMainMove(record, meta = {}) {
   redoStack = [];
   renderMoveList();
   renderStatus();
@@ -563,6 +629,9 @@ function onMainMove(record) {
   }
   if (currentMode === "bot" && mainBoard.game.turn === BOT_COLOR) {
     requestBotMove();
+  }
+  if (currentMode === "multiplayer" && !meta.external && window.MP && record.color === window.MP.myColor) {
+    window.MP.sendMove({ from: record.from, to: record.to, promotion: record.promotion });
   }
 }
 
@@ -593,6 +662,7 @@ function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("is-active"));
   el(id).classList.add("is-active");
   el("difficulty-panel").classList.remove("is-open");
+  el("multiplayer-panel").classList.remove("is-open");
   requestCounter++; // invalidate any pending bot response tied to previous screen
 }
 
@@ -621,15 +691,186 @@ document.querySelectorAll(".difficulty-btn").forEach((btn) => {
 
 el("mode-tutorial").addEventListener("click", () => showScreen("screen-tutorial"));
 el("mode-help").addEventListener("click", () => showScreen("screen-help"));
-el("btn-back-menu").addEventListener("click", () => showScreen("screen-menu"));
+el("btn-back-menu").addEventListener("click", () => {
+  if (currentMode === "multiplayer" && window.MP) window.MP.leaveRoom();
+  showScreen("screen-menu");
+});
 el("tutorial-back-menu").addEventListener("click", () => showScreen("screen-menu"));
 el("help-back-menu").addEventListener("click", () => showScreen("screen-menu"));
 el("btn-new-game").addEventListener("click", () => newMainGame());
 el("btn-flip").addEventListener("click", () => mainBoard.setFlipped(!mainBoard.flipped));
 el("btn-undo").addEventListener("click", () => undoLastTurn());
 el("btn-redo").addEventListener("click", () => redoLastTurn());
+el("btn-resign").addEventListener("click", () => {
+  if (currentMode !== "multiplayer" || !window.MP) return;
+  if (!confirm(t("resignConfirmText"))) return;
+  mainBoard.locked = true;
+  renderStatus();
+  window.MP.resign();
+});
 el("result-rematch").addEventListener("click", () => { el("result-overlay").classList.remove("is-open"); newMainGame(); });
-el("result-menu").addEventListener("click", () => { el("result-overlay").classList.remove("is-open"); showScreen("screen-menu"); });
+el("result-menu").addEventListener("click", () => {
+  el("result-overlay").classList.remove("is-open");
+  if (currentMode === "multiplayer" && window.MP) window.MP.leaveRoom();
+  showScreen("screen-menu");
+});
+
+/* ==================== Multiplayer ==================== */
+function ensureMpCallbacksWired() {
+  if (!window.MP || window.MP.onRemoteMove) return;
+  window.MP.onRemoteMove = (move) => mainBoard.applyExternalMove(move);
+  window.MP.onChat = (msg) => appendChatMessage(msg);
+  window.MP.onOpponentJoined = () => { if (currentMode === "multiplayer") showScreen("screen-game"); };
+  window.MP.onOpponentPresence = (online) => updatePresenceIndicator(online);
+  window.MP.onGameFinished = (result) => showMultiplayerResult(result);
+}
+
+function refreshMpConfiguredUI() {
+  const configured = !!(window.MP && window.MP.configured);
+  el("mp-config-warning").classList.toggle("is-hidden", configured);
+  el("mp-create-btn").disabled = !configured;
+  el("mp-join-open-btn").disabled = !configured;
+  return configured;
+}
+
+function showMpView(name) {
+  ["choice", "join", "waiting"].forEach((v) => {
+    el(`mp-view-${v}`).classList.toggle("is-hidden", v !== name);
+  });
+}
+
+function showMpWaitingView(code) {
+  el("mp-room-code").textContent = code;
+  showMpView("waiting");
+}
+
+function showMpError(text) {
+  const errEl = el("mp-join-error");
+  errEl.textContent = text;
+  errEl.classList.toggle("is-hidden", !text);
+}
+
+function mpErrorMessage(err) {
+  const msg = err && err.message;
+  if (msg === "room-not-found") return t("mpErrorNotFound");
+  if (msg === "room-full") return t("mpErrorFull");
+  if (msg === "room-finished") return t("mpErrorFinished");
+  if (msg === "not-configured") return t("mpNotConfigured");
+  return t("mpErrorGeneric");
+}
+
+function appendChatMessage(msg) {
+  const list = el("chat-messages");
+  const div = document.createElement("div");
+  div.className = "chat-msg " + (msg.mine ? "chat-msg-mine" : "chat-msg-theirs");
+  div.textContent = msg.text;
+  list.appendChild(div);
+  list.scrollTop = list.scrollHeight;
+}
+
+function updatePresenceIndicator(online) {
+  const presEl = el("mp-presence");
+  presEl.textContent = online ? t("mpOpponentOnline") : t("mpOpponentOffline");
+  presEl.classList.toggle("mp-presence-online", online);
+  presEl.classList.toggle("mp-presence-offline", !online);
+}
+
+function showMultiplayerResult(result) {
+  mainBoard.locked = true;
+  const resignedColor = result.startsWith("resign-") ? result.slice(-1) : null;
+  const iWon = resignedColor && window.MP && resignedColor !== window.MP.myColor;
+  el("result-icon").textContent = iWon ? "🏆" : "🏳️";
+  el("result-title").textContent = iWon ? t("resultOpponentResignedTitle") : t("resultYouResignedTitle");
+  el("result-text").textContent = iWon ? t("resultOpponentResignedText") : t("resultYouResignedText");
+  el("result-rematch").classList.add("is-hidden");
+  el("result-overlay").classList.add("is-open");
+}
+
+async function handleCreateRoom() {
+  if (!window.MP || !window.MP.configured) return;
+  currentMode = "multiplayer";
+  newMainGame();
+  el("chat-messages").innerHTML = "";
+  showMpError("");
+  try {
+    const code = await window.MP.createRoom();
+    showMpWaitingView(code);
+  } catch (err) {
+    showMpError(mpErrorMessage(err));
+  }
+}
+
+async function handleJoinRoom(code) {
+  if (!window.MP || !window.MP.configured) return;
+  currentMode = "multiplayer";
+  newMainGame();
+  el("chat-messages").innerHTML = "";
+  showMpError("");
+  try {
+    await window.MP.joinRoom(code);
+    showScreen("screen-game");
+  } catch (err) {
+    showMpError(mpErrorMessage(err));
+  }
+}
+
+el("mode-multiplayer").addEventListener("click", () => {
+  ensureMpCallbacksWired();
+  refreshMpConfiguredUI();
+  showMpError("");
+  showMpView("choice");
+  el("multiplayer-panel").classList.add("is-open");
+});
+el("mp-choice-cancel").addEventListener("click", () => el("multiplayer-panel").classList.remove("is-open"));
+el("mp-create-btn").addEventListener("click", () => handleCreateRoom());
+el("mp-join-open-btn").addEventListener("click", () => { showMpError(""); showMpView("join"); });
+el("mp-join-back").addEventListener("click", () => showMpView("choice"));
+el("mp-join-input").addEventListener("input", (e) => { e.target.value = e.target.value.toUpperCase(); });
+el("mp-join-submit").addEventListener("click", () => {
+  const code = el("mp-join-input").value.trim().toUpperCase();
+  if (code.length !== 6) { showMpError(t("mpErrorGeneric")); return; }
+  handleJoinRoom(code);
+});
+el("mp-waiting-cancel").addEventListener("click", () => {
+  if (window.MP) window.MP.leaveRoom();
+  showMpView("choice");
+});
+el("mp-share-btn").addEventListener("click", async () => {
+  if (!window.MP || !window.MP.roomCode) return;
+  const url = `https://vidipt89.github.io/Xadrez/?room=${window.MP.roomCode}`;
+  if (navigator.share) {
+    try { await navigator.share({ title: "Xadrez", text: t("mpShareText"), url }); } catch (e) { /* user cancelled */ }
+  } else if (navigator.clipboard) {
+    await navigator.clipboard.writeText(url);
+    const btn = el("mp-share-btn");
+    btn.textContent = t("mpShareCopied");
+    setTimeout(() => { btn.textContent = t("mpShareLink"); }, 1500);
+  }
+});
+el("chat-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const input = el("chat-input");
+  const text = input.value;
+  if (!text.trim() || currentMode !== "multiplayer" || !window.MP) return;
+  window.MP.sendChat(text);
+  input.value = "";
+});
+
+function autoJoinFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("room");
+  if (!code || code.length !== 6) return;
+  closeIntro();
+  ensureMpCallbacksWired();
+  refreshMpConfiguredUI();
+  showMpError("");
+  showMpView("join");
+  el("mp-join-input").value = code.toUpperCase();
+  el("multiplayer-panel").classList.add("is-open");
+}
+if (new URLSearchParams(window.location.search).get("room")) {
+  window.addEventListener("mp-ready", autoJoinFromUrl, { once: true });
+}
 
 /* ==================== Tutorial ==================== */
 function placePieces(list) {

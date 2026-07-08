@@ -84,6 +84,11 @@
           <span class="mode-name" data-i18n="modeHelp">Ajuda</span>
           <span class="mode-desc" data-i18n="modeHelpDesc">Regras e controlos</span>
         </button>
+        <button class="mode-card" id="mode-multiplayer" type="button">
+          <span class="mode-icon">🌐</span>
+          <span class="mode-name" data-i18n="modeMultiplayer">Multijogador</span>
+          <span class="mode-desc" data-i18n="modeMultiplayerDesc">Joga online com um amigo</span>
+        </button>
       </div>
 
       <div class="difficulty-panel" id="difficulty-panel">
@@ -108,6 +113,37 @@
         </div>
         <button class="ghost-btn" id="difficulty-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
       </div>
+
+      <div class="difficulty-panel" id="multiplayer-panel">
+        <div class="mp-view" id="mp-view-choice">
+          <p class="difficulty-title" data-i18n="mpTitle">Multijogador Online</p>
+          <p class="mp-config-warning is-hidden" id="mp-config-warning" data-i18n="mpNotConfigured">O multijogador ainda não está configurado.</p>
+          <div class="mp-choice-buttons">
+            <button class="ghost-btn" id="mp-create-btn" type="button" data-i18n="mpCreateRoom">➕ Criar Sala</button>
+            <button class="ghost-btn" id="mp-join-open-btn" type="button" data-i18n="mpJoinRoom">🔑 Entrar numa Sala</button>
+          </div>
+          <button class="ghost-btn" id="mp-choice-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
+        </div>
+
+        <div class="mp-view is-hidden" id="mp-view-join">
+          <p class="difficulty-title" data-i18n="mpEnterCode">Introduz o código da sala</p>
+          <input class="mp-code-input" id="mp-join-input" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="ABC123" />
+          <p class="mp-error is-hidden" id="mp-join-error"></p>
+          <div class="mp-choice-buttons">
+            <button class="ghost-btn" id="mp-join-submit" type="button" data-i18n="mpJoin">Entrar</button>
+            <button class="ghost-btn" id="mp-join-back" type="button" data-i18n="cancelBtn">Cancelar</button>
+          </div>
+        </div>
+
+        <div class="mp-view is-hidden" id="mp-view-waiting">
+          <p class="difficulty-title" data-i18n="mpWaitingTitle">À espera de um adversário…</p>
+          <p class="mp-room-code" id="mp-room-code"></p>
+          <div class="mp-choice-buttons">
+            <button class="ghost-btn" id="mp-share-btn" type="button" data-i18n="mpShareLink">🔗 Partilhar Link</button>
+            <button class="ghost-btn" id="mp-waiting-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ===================== GAME ===================== -->
@@ -127,6 +163,7 @@
           <div class="status-card">
             <p class="status-turn" id="status-turn" data-i18n="turnWhite">Vez das Brancas</p>
             <p class="status-note" id="status-note"></p>
+            <p class="mp-presence is-hidden" id="mp-presence"></p>
           </div>
 
           <div class="history-card">
@@ -134,11 +171,21 @@
             <ol class="move-list" id="move-list"></ol>
           </div>
 
+          <div class="chat-card is-hidden" id="chat-card">
+            <p class="panel-title" data-i18n="chatTitle">Chat</p>
+            <div class="chat-messages" id="chat-messages"></div>
+            <form class="chat-input-row" id="chat-form">
+              <input class="chat-input" id="chat-input" type="text" maxlength="300" autocomplete="off" data-i18n-placeholder="chatPlaceholder" placeholder="Escreve uma mensagem…" />
+              <button class="chat-send-btn" type="submit" aria-label="Enviar">➤</button>
+            </form>
+          </div>
+
           <div class="panel-buttons">
             <div class="panel-buttons-row">
               <button class="ghost-btn" id="btn-undo" type="button" data-i18n="undoMove">↩️ Voltar Atrás</button>
               <button class="ghost-btn" id="btn-redo" type="button" data-i18n="redoMove">↪️ Avançar</button>
             </div>
+            <button class="ghost-btn is-hidden" id="btn-resign" type="button" data-i18n="resignGame">🏳️ Desistir</button>
             <button class="ghost-btn" id="btn-flip" type="button" data-i18n="flipBoard">🔄 Inverter</button>
             <button class="ghost-btn" id="btn-new-game" type="button" data-i18n="newGame">♻️ Novo Jogo</button>
             <button class="ghost-btn" id="btn-back-menu" type="button" data-i18n="backToMenu">⬅️ Menu</button>
@@ -233,6 +280,8 @@
 </div>
 
 <script src="chess-engine.js"></script>
+<script src="firebase-config.js"></script>
+<script type="module" src="chess-multiplayer.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

@@ -22,6 +22,7 @@
 - 🎞️ Movimento das peças animado (incluindo roque) em vez de instantâneo
 - ↩️ ↪️ Voltar Atrás / Avançar no modo Contra o Bot
 - 🌌 Fundo ambiente animado, independente do tabuleiro
+- 🌐 Modo Multijogador — joga online com um amigo através de uma sala com código de 6 caracteres ou link de convite, com chat em tempo real, indicador de presença do adversário e desistência
 
 ## 🛠️ Tech Stack
 
@@ -33,11 +34,14 @@
 
 ```
 Xadrez/
-├── index.html         # Estrutura da página, menu, tabuleiro, tutorial, ajuda, modais
-├── style.css           # Tema, layout do tabuleiro, responsividade, animações
-├── script.js            # Arranque, i18n, roteamento de ecrãs, UI, lições, ajuda
-├── chess-engine.js      # Motor de regras puro (geração e validação de lances, notação)
-├── chess-ai.js            # Bot de IA (minimax + poda alfa-beta), corre num Web Worker
+├── index.html            # Estrutura da página, menu, tabuleiro, tutorial, ajuda, modais
+├── style.css              # Tema, layout do tabuleiro, responsividade, animações
+├── script.js               # Arranque, i18n, roteamento de ecrãs, UI, lições, ajuda
+├── chess-engine.js         # Motor de regras puro (geração e validação de lances, notação)
+├── chess-ai.js               # Bot de IA (minimax + poda alfa-beta), corre num Web Worker
+├── firebase-config.js         # Configuração do projeto Firebase (ver secção Multijogador)
+├── firebase-init.js            # Inicialização do Firebase + autenticação anónima
+├── chess-multiplayer.js         # Salas, lances, chat e presença em tempo real via Firestore
 ├── LICENSE
 └── README.md
 ```
@@ -85,6 +89,16 @@ python3 -m http.server
 ```
 
 No build step, no dependencies — apenas HTML, CSS e JS estáticos.
+
+## 🌐 Multijogador
+
+O modo Multijogador usa [Firebase](https://firebase.google.com/) (Firestore + autenticação anónima) para sincronizar as jogadas e o chat entre dois dispositivos em tempo real — sem servidor próprio. Para ativar:
+
+1. Cria um projeto gratuito na [Firebase Console](https://console.firebase.google.com/), ativa **Authentication → Anonymous** e cria uma **Firestore Database** em modo produção.
+2. Publica as regras de segurança do Firestore (definem que só os dois jogadores de uma sala podem ler/escrever os seus próprios dados).
+3. Regista uma app Web no projeto e substitui os valores em `firebase-config.js` pelos do teu projeto.
+
+Sem esta configuração, a app funciona normalmente em todos os outros modos — o cartão "Multijogador" fica apenas indisponível.
 
 ## 📝 Notes
 
