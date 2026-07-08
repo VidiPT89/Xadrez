@@ -18,7 +18,9 @@
 - 🇵🇹 🇬🇧 Alternância de idioma entre Português Europeu e Inglês, guardada entre visitas
 - 🔊 Efeitos sonoros sintetizados via Web Audio API para lances, capturas, xeque e fim de jogo
 - 🎬 Splash de abertura animado com apresentação da app, que desaparece automaticamente
-- 🖼️ Tabuleiro totalmente responsivo, com destaque de lances legais, última jogada e xeque
+- 🧊 Tabuleiro em 3D real (Three.js) — peças torneadas (lathe geometry) com sombras e materiais de madeira/marfim, câmara em perspetiva e interação por raycasting, com destaque de lances legais, última jogada e xeque
+- 🎞️ Movimento das peças animado (incluindo roque) em vez de instantâneo
+- ↩️ ↪️ Voltar Atrás / Avançar no modo Contra o Bot
 - 🌌 Fundo ambiente animado, independente do tabuleiro
 
 ## 🛠️ Tech Stack
@@ -26,6 +28,7 @@
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
+![Three.js](https://img.shields.io/badge/Three.js-000000?style=flat&logo=three.js&logoColor=white)
 
 ## 🏗️ Project Structure
 
@@ -36,6 +39,7 @@ Xadrez/
 ├── script.js            # Arranque, i18n, roteamento de ecrãs, UI, lições, ajuda
 ├── chess-engine.js      # Motor de regras puro (geração e validação de lances, notação)
 ├── chess-ai.js            # Bot de IA (minimax + poda alfa-beta), corre num Web Worker
+├── board3d.js              # Tabuleiro 3D: peças lathe/extrude, câmara, luzes, raycasting (Three.js)
 ├── LICENSE
 └── README.md
 ```

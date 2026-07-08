@@ -439,7 +439,7 @@ class BoardController {
 }
 
 /* ==================== Main game state ==================== */
-const mainBoard = new BoardController(el("board"), { interactive: true, onAfterMove: onMainMove });
+const mainBoard = new Board3DController(el("board"), { interactive: true, onAfterMove: onMainMove });
 let currentMode = "1v1"; // '1v1' | 'bot'
 let botLevel = "medium";
 const BOT_COLOR = "b";
@@ -594,6 +594,7 @@ function showScreen(id) {
   el(id).classList.add("is-active");
   el("difficulty-panel").classList.remove("is-open");
   requestCounter++; // invalidate any pending bot response tied to previous screen
+  if (id === "screen-game" && mainBoard._resize) mainBoard._resize();
 }
 
 el("mode-1v1").addEventListener("click", () => {
