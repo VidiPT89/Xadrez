@@ -432,6 +432,14 @@ button { font-family: inherit; }
 .mp-config-warning { color: var(--danger); font-size: 0.85rem; text-align: center; margin: 0; }
 .mp-config-warning.is-hidden { display: none; }
 
+.mp-quickplay-btn {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.1);
+  font-weight: 700;
+}
+.mp-quickplay-btn:hover { background: rgba(212, 175, 55, 0.18); }
+.mp-quickplay-desc { margin: -8px 0 0; font-size: 0.8rem; color: var(--ink-dim); text-align: center; }
+
 .mp-choice-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
 .mp-code-input {

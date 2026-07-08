@@ -1,7 +1,7 @@
 /* Multiplayer networking layer: rooms, moves, chat and presence over Firestore.
  * Exposes a small event-driven API on window.MP; script.js is the only other file that touches
  * BoardController, so this module never reaches into the DOM. */
-import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20260709";
+import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20260709b";
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc,
   query, orderBy, onSnapshot, serverTimestamp,
@@ -10,6 +10,9 @@ import {
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I/L — avoids transcription errors
 const PRESENCE_HEARTBEAT_MS = 20000;
 const PRESENCE_STALE_MS = 45000;
+// Fixed pool of public "Quick Play" rooms — always exist (or get recycled once finished), so
+// tapping Quick Play never requires coordinating a code with anyone.
+const LOBBY_CODES = ["LOBBYA", "LOBBYB", "LOBBYC"];
 
 function randomCode() {
   let s = "";
@@ -161,6 +164,20 @@ async function enterRoom(code, data) {
   return { code, myColor: state.myColor, role: state.role };
 }
 
+function freshRoomDoc(hostUid) {
+  return {
+    hostUid,
+    hostColor: "w",
+    guestUid: null,
+    status: "waiting",
+    result: null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    hostPresence: { online: true, lastSeen: serverTimestamp() },
+    guestPresence: { online: false, lastSeen: serverTimestamp() },
+  };
+}
+
 export async function joinRoom(code) {
   await ensureSignedIn();
   state.myUid = auth.currentUser.uid;
@@ -180,23 +197,45 @@ export async function createRoom() {
     const existing = await getDoc(ref);
     if (existing.exists()) continue;
     try {
-      await setDoc(ref, {
-        hostUid: myUid,
-        hostColor: "w",
-        guestUid: null,
-        status: "waiting",
-        result: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        hostPresence: { online: true, lastSeen: serverTimestamp() },
-        guestPresence: { online: false, lastSeen: serverTimestamp() },
-      });
+      await setDoc(ref, freshRoomDoc(myUid));
     } catch (err) {
       continue;
     }
     return joinRoom(code);
   }
   throw new Error("room-create-failed");
+}
+
+/** Joins (or claims/recycles) the first available room in the fixed public lobby pool, so two
+ * people can play without coordinating a code: whoever arrives first waits as host, whoever
+ * arrives second joins immediately as guest and the game starts right away. */
+export async function quickPlay() {
+  if (!configured) throw new Error("not-configured");
+  await ensureSignedIn();
+  const myUid = auth.currentUser.uid;
+  state.myUid = myUid;
+  for (const code of LOBBY_CODES) {
+    const ref = doc(db, "rooms", code);
+    const snap = await getDoc(ref).catch(() => null);
+    const data = snap && snap.exists() ? snap.data() : null;
+
+    if (!data || data.status === "finished") {
+      try {
+        await setDoc(ref, freshRoomDoc(myUid));
+      } catch (err) {
+        continue; // someone else claimed/recycled this slot first — try the next one
+      }
+      return enterRoom(code, freshRoomDoc(myUid));
+    }
+    if (data.hostUid === myUid || data.guestUid === myUid) {
+      return enterRoom(code, data); // reconnecting to my own quick-play game
+    }
+    if (data.status === "waiting" && !data.guestUid) {
+      return enterRoom(code, data); // joins as guest, starts immediately
+    }
+    // occupied by two other players — try the next pool slot
+  }
+  throw new Error("lobby-full");
 }
 
 export async function sendMove({ from, to, promotion }) {
@@ -245,6 +284,6 @@ export function leaveRoom() {
   state.sawGuest = false;
 }
 
-Object.assign(MP, { createRoom, joinRoom, sendMove, sendChat, resign, leaveRoom });
+Object.assign(MP, { createRoom, joinRoom, quickPlay, sendMove, sendChat, resign, leaveRoom });
 window.MP = MP;
 window.dispatchEvent(new CustomEvent("mp-ready"));

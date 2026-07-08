@@ -67,6 +67,8 @@ const STRINGS = {
     modeMultiplayerDesc: "Joga online com um amigo",
     mpTitle: "Multijogador Online",
     mpNotConfigured: "O multijogador ainda não está configurado.",
+    mpQuickPlay: "⚡ Jogo Rápido",
+    mpQuickPlayDesc: "Entra logo e espera por um adversário — sem código.",
     mpCreateRoom: "➕ Criar Sala",
     mpJoinRoom: "🔑 Entrar numa Sala",
     mpEnterCode: "Introduz o código da sala",
@@ -78,6 +80,7 @@ const STRINGS = {
     mpErrorNotFound: "Essa sala não existe.",
     mpErrorFull: "Essa sala já está cheia.",
     mpErrorFinished: "Essa partida já terminou.",
+    mpErrorLobbyFull: "Todas as salas rápidas estão ocupadas. Tenta criar uma sala normal.",
     mpErrorGeneric: "Não foi possível entrar na sala. Verifica o código.",
     mpOpponentOnline: "🟢 Adversário online",
     mpOpponentOffline: "⚪ Adversário offline",
@@ -144,6 +147,8 @@ const STRINGS = {
     modeMultiplayerDesc: "Play online with a friend",
     mpTitle: "Online Multiplayer",
     mpNotConfigured: "Multiplayer isn't configured yet.",
+    mpQuickPlay: "⚡ Quick Play",
+    mpQuickPlayDesc: "Jump in and wait for an opponent — no code needed.",
     mpCreateRoom: "➕ Create Room",
     mpJoinRoom: "🔑 Join a Room",
     mpEnterCode: "Enter the room code",
@@ -155,6 +160,7 @@ const STRINGS = {
     mpErrorNotFound: "That room doesn't exist.",
     mpErrorFull: "That room is already full.",
     mpErrorFinished: "That match has already ended.",
+    mpErrorLobbyFull: "All quick-play rooms are full right now. Try creating a normal room.",
     mpErrorGeneric: "Couldn't join the room. Check the code.",
     mpOpponentOnline: "🟢 Opponent online",
     mpOpponentOffline: "⚪ Opponent offline",
@@ -506,7 +512,7 @@ let aiWorker = null;
 let requestCounter = 0;
 
 function getWorker() {
-  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709");
+  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709b");
   return aiWorker;
 }
 
@@ -731,6 +737,7 @@ function refreshMpConfiguredUI() {
   el("mp-config-warning").classList.toggle("is-hidden", configured);
   el("mp-create-btn").disabled = !configured;
   el("mp-join-open-btn").disabled = !configured;
+  el("mp-quickplay-btn").disabled = !configured;
   return configured;
 }
 
@@ -756,6 +763,7 @@ function mpErrorMessage(err) {
   if (msg === "room-not-found") return t("mpErrorNotFound");
   if (msg === "room-full") return t("mpErrorFull");
   if (msg === "room-finished") return t("mpErrorFinished");
+  if (msg === "lobby-full") return t("mpErrorLobbyFull");
   if (msg === "not-configured") return t("mpNotConfigured");
   return t("mpErrorGeneric");
 }
@@ -815,6 +823,24 @@ async function handleJoinRoom(code) {
   }
 }
 
+async function handleQuickPlay() {
+  if (!window.MP || !window.MP.configured) return;
+  currentMode = "multiplayer";
+  newMainGame();
+  el("chat-messages").innerHTML = "";
+  showMpError("");
+  try {
+    const result = await window.MP.quickPlay();
+    if (result.role === "host") {
+      showMpWaitingView(window.MP.roomCode);
+    } else {
+      showScreen("screen-game");
+    }
+  } catch (err) {
+    showMpError(mpErrorMessage(err));
+  }
+}
+
 el("mode-multiplayer").addEventListener("click", () => {
   ensureMpCallbacksWired();
   refreshMpConfiguredUI();
@@ -824,6 +850,7 @@ el("mode-multiplayer").addEventListener("click", () => {
   el("multiplayer-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
 el("mp-choice-cancel").addEventListener("click", () => el("multiplayer-panel").classList.remove("is-open"));
+el("mp-quickplay-btn").addEventListener("click", () => handleQuickPlay());
 el("mp-create-btn").addEventListener("click", () => handleCreateRoom());
 el("mp-join-open-btn").addEventListener("click", () => { showMpError(""); showMpView("join"); });
 el("mp-join-back").addEventListener("click", () => showMpView("choice"));
