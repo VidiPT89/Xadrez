@@ -506,7 +506,7 @@ let aiWorker = null;
 let requestCounter = 0;
 
 function getWorker() {
-  if (!aiWorker) aiWorker = new Worker("chess-ai.js");
+  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709");
   return aiWorker;
 }
 
