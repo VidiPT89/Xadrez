@@ -3,10 +3,10 @@
  * data. Replace the placeholder values below with the config from Firebase Console → Project
  * Settings → General → Your apps → Web app. Multiplayer mode stays disabled until you do. */
 window.__FIREBASE_CONFIG__ = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  storageBucket: "REPLACE_ME.appspot.com",
-  messagingSenderId: "REPLACE_ME",
-  appId: "REPLACE_ME",
+  apiKey: "AIzaSyDdOQscmgxei21CXLnL-OXnATtf9doWsmM",
+  authDomain: "xadrez-f264a.firebaseapp.com",
+  projectId: "xadrez-f264a",
+  storageBucket: "xadrez-f264a.firebasestorage.app",
+  messagingSenderId: "10936409163",
+  appId: "1:10936409163:web:7177557495270058a01ce",
 };

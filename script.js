@@ -793,8 +793,8 @@ async function handleCreateRoom() {
   el("chat-messages").innerHTML = "";
   showMpError("");
   try {
-    const code = await window.MP.createRoom();
-    showMpWaitingView(code);
+    await window.MP.createRoom();
+    showMpWaitingView(window.MP.roomCode);
   } catch (err) {
     showMpError(mpErrorMessage(err));
   }
