@@ -512,7 +512,7 @@ let aiWorker = null;
 let requestCounter = 0;
 
 function getWorker() {
-  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709b");
+  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709c");
   return aiWorker;
 }
 

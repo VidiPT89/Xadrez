@@ -1,5 +1,5 @@
 /* ==================== Chess AI — runs inside a Web Worker ==================== */
-importScripts("chess-engine.js?v=20260709b");
+importScripts("chess-engine.js?v=20260709c");
 
 const MATE_SCORE = 1000000;
 

@@ -1,7 +1,7 @@
 /* Multiplayer networking layer: rooms, moves, chat and presence over Firestore.
  * Exposes a small event-driven API on window.MP; script.js is the only other file that touches
  * BoardController, so this module never reaches into the DOM. */
-import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20260709b";
+import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20260709c";
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc,
   query, orderBy, onSnapshot, serverTimestamp,
@@ -233,7 +233,15 @@ export async function quickPlay() {
     if (data.status === "waiting" && !data.guestUid) {
       return enterRoom(code, data); // joins as guest, starts immediately
     }
-    // occupied by two other players — try the next pool slot
+    // Occupied by two other players — try reclaiming it in case it's actually an abandoned
+    // game (both sides have been offline a while). The security rules are the real arbiter:
+    // this write only succeeds if both presences are genuinely stale server-side.
+    try {
+      await setDoc(ref, freshRoomDoc(myUid));
+      return enterRoom(code, freshRoomDoc(myUid));
+    } catch (err) {
+      continue; // still genuinely occupied — try the next pool slot
+    }
   }
   throw new Error("lobby-full");
 }
