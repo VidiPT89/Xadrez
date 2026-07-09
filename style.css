@@ -214,20 +214,14 @@ button { font-family: inherit; }
 .mode-desc { font-size: 0.85rem; color: var(--ink-dim); text-align: center; }
 
 .difficulty-panel {
-  display: none;
+  display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  margin-top: 30px;
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius);
-  padding: 24px;
-  width: 100%;
-  max-width: 520px;
+  max-width: 480px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
 }
-
-.difficulty-panel.is-open { display: flex; }
 
 .difficulty-title { font-weight: 700; margin: 0; }
 

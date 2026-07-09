@@ -1,7 +1,7 @@
 /* Multiplayer networking layer: rooms, moves, chat and presence over Firestore.
  * Exposes a small event-driven API on window.MP; script.js is the only other file that touches
  * BoardController, so this module never reaches into the DOM. */
-import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20260709d";
+import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20260709e";
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc,
   query, orderBy, onSnapshot, serverTimestamp,

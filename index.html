@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=20260709d" />
+<link rel="stylesheet" href="style.css?v=20260709e" />
 </head>
 <body>
 <canvas id="bg-canvas"></canvas>
@@ -91,58 +91,62 @@
         </button>
       </div>
 
-      <div class="difficulty-panel" id="difficulty-panel">
-        <p class="difficulty-title" data-i18n="chooseDifficulty">Escolhe o nível do bot</p>
-        <div class="difficulty-grid">
-          <button class="difficulty-btn" data-level="beginner" type="button">
-            <span class="difficulty-stars">★☆☆☆</span>
-            <span data-i18n="levelBeginner">Iniciante</span>
-          </button>
-          <button class="difficulty-btn" data-level="easy" type="button">
-            <span class="difficulty-stars">★★☆☆</span>
-            <span data-i18n="levelEasy">Fácil</span>
-          </button>
-          <button class="difficulty-btn" data-level="medium" type="button">
-            <span class="difficulty-stars">★★★☆</span>
-            <span data-i18n="levelMedium">Médio</span>
-          </button>
-          <button class="difficulty-btn" data-level="hard" type="button">
-            <span class="difficulty-stars">★★★★</span>
-            <span data-i18n="levelHard">Difícil</span>
-          </button>
+      <div class="modal-overlay" id="difficulty-overlay">
+        <div class="modal difficulty-panel" id="difficulty-panel">
+          <p class="difficulty-title" data-i18n="chooseDifficulty">Escolhe o nível do bot</p>
+          <div class="difficulty-grid">
+            <button class="difficulty-btn" data-level="beginner" type="button">
+              <span class="difficulty-stars">★☆☆☆</span>
+              <span data-i18n="levelBeginner">Iniciante</span>
+            </button>
+            <button class="difficulty-btn" data-level="easy" type="button">
+              <span class="difficulty-stars">★★☆☆</span>
+              <span data-i18n="levelEasy">Fácil</span>
+            </button>
+            <button class="difficulty-btn" data-level="medium" type="button">
+              <span class="difficulty-stars">★★★☆</span>
+              <span data-i18n="levelMedium">Médio</span>
+            </button>
+            <button class="difficulty-btn" data-level="hard" type="button">
+              <span class="difficulty-stars">★★★★</span>
+              <span data-i18n="levelHard">Difícil</span>
+            </button>
+          </div>
+          <button class="ghost-btn" id="difficulty-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
         </div>
-        <button class="ghost-btn" id="difficulty-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
       </div>
 
-      <div class="difficulty-panel" id="multiplayer-panel">
-        <div class="mp-view" id="mp-view-choice">
-          <p class="difficulty-title" data-i18n="mpTitle">Multijogador Online</p>
-          <p class="mp-config-warning is-hidden" id="mp-config-warning" data-i18n="mpNotConfigured">O multijogador ainda não está configurado.</p>
-          <button class="ghost-btn mp-quickplay-btn" id="mp-quickplay-btn" type="button" data-i18n="mpQuickPlay">⚡ Jogo Rápido</button>
-          <p class="mp-quickplay-desc" data-i18n="mpQuickPlayDesc">Entra logo e espera por um adversário — sem código.</p>
-          <div class="mp-choice-buttons">
-            <button class="ghost-btn" id="mp-create-btn" type="button" data-i18n="mpCreateRoom">➕ Criar Sala</button>
-            <button class="ghost-btn" id="mp-join-open-btn" type="button" data-i18n="mpJoinRoom">🔑 Entrar numa Sala</button>
+      <div class="modal-overlay" id="multiplayer-overlay">
+        <div class="modal difficulty-panel" id="multiplayer-panel">
+          <div class="mp-view" id="mp-view-choice">
+            <p class="difficulty-title" data-i18n="mpTitle">Multijogador Online</p>
+            <p class="mp-config-warning is-hidden" id="mp-config-warning" data-i18n="mpNotConfigured">O multijogador ainda não está configurado.</p>
+            <button class="ghost-btn mp-quickplay-btn" id="mp-quickplay-btn" type="button" data-i18n="mpQuickPlay">⚡ Jogo Rápido</button>
+            <p class="mp-quickplay-desc" data-i18n="mpQuickPlayDesc">Entra logo e espera por um adversário — sem código.</p>
+            <div class="mp-choice-buttons">
+              <button class="ghost-btn" id="mp-create-btn" type="button" data-i18n="mpCreateRoom">➕ Criar Sala</button>
+              <button class="ghost-btn" id="mp-join-open-btn" type="button" data-i18n="mpJoinRoom">🔑 Entrar numa Sala</button>
+            </div>
+            <button class="ghost-btn" id="mp-choice-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
           </div>
-          <button class="ghost-btn" id="mp-choice-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
-        </div>
 
-        <div class="mp-view is-hidden" id="mp-view-join">
-          <p class="difficulty-title" data-i18n="mpEnterCode">Introduz o código da sala</p>
-          <input class="mp-code-input" id="mp-join-input" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="ABC123" />
-          <p class="mp-error is-hidden" id="mp-join-error"></p>
-          <div class="mp-choice-buttons">
-            <button class="ghost-btn" id="mp-join-submit" type="button" data-i18n="mpJoin">Entrar</button>
-            <button class="ghost-btn" id="mp-join-back" type="button" data-i18n="cancelBtn">Cancelar</button>
+          <div class="mp-view is-hidden" id="mp-view-join">
+            <p class="difficulty-title" data-i18n="mpEnterCode">Introduz o código da sala</p>
+            <input class="mp-code-input" id="mp-join-input" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="ABC123" />
+            <p class="mp-error is-hidden" id="mp-join-error"></p>
+            <div class="mp-choice-buttons">
+              <button class="ghost-btn" id="mp-join-submit" type="button" data-i18n="mpJoin">Entrar</button>
+              <button class="ghost-btn" id="mp-join-back" type="button" data-i18n="cancelBtn">Cancelar</button>
+            </div>
           </div>
-        </div>
 
-        <div class="mp-view is-hidden" id="mp-view-waiting">
-          <p class="difficulty-title" data-i18n="mpWaitingTitle">À espera de um adversário…</p>
-          <p class="mp-room-code" id="mp-room-code"></p>
-          <div class="mp-choice-buttons">
-            <button class="ghost-btn" id="mp-share-btn" type="button" data-i18n="mpShareLink">🔗 Partilhar Link</button>
-            <button class="ghost-btn" id="mp-waiting-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
+          <div class="mp-view is-hidden" id="mp-view-waiting">
+            <p class="difficulty-title" data-i18n="mpWaitingTitle">À espera de um adversário…</p>
+            <p class="mp-room-code" id="mp-room-code"></p>
+            <div class="mp-choice-buttons">
+              <button class="ghost-btn" id="mp-share-btn" type="button" data-i18n="mpShareLink">🔗 Partilhar Link</button>
+              <button class="ghost-btn" id="mp-waiting-cancel" type="button" data-i18n="cancelBtn">Cancelar</button>
+            </div>
           </div>
         </div>
       </div>
@@ -281,9 +285,9 @@
   </div>
 </div>
 
-<script src="chess-engine.js?v=20260709d"></script>
-<script src="firebase-config.js?v=20260709d"></script>
-<script type="module" src="chess-multiplayer.js?v=20260709d"></script>
-<script src="script.js?v=20260709d"></script>
+<script src="chess-engine.js?v=20260709e"></script>
+<script src="firebase-config.js?v=20260709e"></script>
+<script type="module" src="chess-multiplayer.js?v=20260709e"></script>
+<script src="script.js?v=20260709e"></script>
 </body>
 </html>

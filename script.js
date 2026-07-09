@@ -512,7 +512,7 @@ let aiWorker = null;
 let requestCounter = 0;
 
 function getWorker() {
-  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709d");
+  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709e");
   return aiWorker;
 }
 
@@ -667,8 +667,8 @@ function requestBotMove() {
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("is-active"));
   el(id).classList.add("is-active");
-  el("difficulty-panel").classList.remove("is-open");
-  el("multiplayer-panel").classList.remove("is-open");
+  el("difficulty-overlay").classList.remove("is-open");
+  el("multiplayer-overlay").classList.remove("is-open");
   requestCounter++; // invalidate any pending bot response tied to previous screen
 }
 
@@ -679,12 +679,11 @@ el("mode-1v1").addEventListener("click", () => {
 });
 
 el("mode-bot").addEventListener("click", () => {
-  el("difficulty-panel").classList.add("is-open");
-  el("difficulty-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  el("difficulty-overlay").classList.add("is-open");
 });
 
 el("difficulty-cancel").addEventListener("click", () => {
-  el("difficulty-panel").classList.remove("is-open");
+  el("difficulty-overlay").classList.remove("is-open");
 });
 
 document.querySelectorAll(".difficulty-btn").forEach((btn) => {
@@ -850,10 +849,9 @@ el("mode-multiplayer").addEventListener("click", () => {
   refreshMpConfiguredUI();
   showMpError("");
   showMpView("choice");
-  el("multiplayer-panel").classList.add("is-open");
-  el("multiplayer-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  el("multiplayer-overlay").classList.add("is-open");
 });
-el("mp-choice-cancel").addEventListener("click", () => el("multiplayer-panel").classList.remove("is-open"));
+el("mp-choice-cancel").addEventListener("click", () => el("multiplayer-overlay").classList.remove("is-open"));
 el("mp-quickplay-btn").addEventListener("click", () => handleQuickPlay());
 el("mp-create-btn").addEventListener("click", () => handleCreateRoom());
 el("mp-join-open-btn").addEventListener("click", () => { showMpError(""); showMpView("join"); });
@@ -899,7 +897,7 @@ function autoJoinFromUrl() {
   showMpError("");
   showMpView("join");
   el("mp-join-input").value = code.toUpperCase();
-  el("multiplayer-panel").classList.add("is-open");
+  el("multiplayer-overlay").classList.add("is-open");
 }
 if (new URLSearchParams(window.location.search).get("room")) {
   window.addEventListener("mp-ready", autoJoinFromUrl, { once: true });
