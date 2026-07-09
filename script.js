@@ -512,7 +512,7 @@ let aiWorker = null;
 let requestCounter = 0;
 
 function getWorker() {
-  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709c");
+  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709d");
   return aiWorker;
 }
 
@@ -747,8 +747,12 @@ function showMpView(name) {
   });
 }
 
-function showMpWaitingView(code) {
-  el("mp-room-code").textContent = code;
+function showMpWaitingView(code, isQuickPlay = false) {
+  // Only a deliberately-created room is worth showing/sharing a code for — Quick Play's whole
+  // point is that no code is needed, so keep that wait screen plain.
+  el("mp-room-code").classList.toggle("is-hidden", isQuickPlay);
+  el("mp-share-btn").classList.toggle("is-hidden", isQuickPlay);
+  el("mp-room-code").textContent = isQuickPlay ? "" : code;
   showMpView("waiting");
 }
 
@@ -832,7 +836,7 @@ async function handleQuickPlay() {
   try {
     const result = await window.MP.quickPlay();
     if (result.role === "host") {
-      showMpWaitingView(window.MP.roomCode);
+      showMpWaitingView(window.MP.roomCode, true);
     } else {
       showScreen("screen-game");
     }

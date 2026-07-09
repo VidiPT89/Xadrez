@@ -468,6 +468,7 @@ button { font-family: inherit; }
   color: var(--gold-soft);
   margin: 0;
 }
+.mp-room-code.is-hidden { display: none; }
 
 .mp-presence { margin: 6px 0 0; font-size: 0.85rem; }
 .mp-presence.is-hidden { display: none; }
