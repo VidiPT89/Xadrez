@@ -83,16 +83,18 @@ function evaluate(game) {
   return score;
 }
 
-function orderMoves(moves) {
-  return moves.slice().sort((a, b) => {
-    const scoreOf = (m) => {
-      let s = 0;
-      if (m.capture) s += 1000;
-      if (m.promotion) s += 900;
-      return s;
-    };
-    return scoreOf(b) - scoreOf(a);
-  });
+function orderMoves(moves, game) {
+  const scoreOf = (m) => {
+    let s = 0;
+    if (m.capture) {
+      const victim = m.enPassant ? { type: "p" } : game.board[m.to.r][m.to.c];
+      const victimValue = victim ? PIECE_VALUES[victim.type] : PIECE_VALUES.p;
+      s += 10000 + victimValue * 10 - PIECE_VALUES[m.piece.type];
+    }
+    if (m.promotion) s += 900;
+    return s;
+  };
+  return moves.slice().sort((a, b) => scoreOf(b) - scoreOf(a));
 }
 
 function quiescence(game, alpha, beta, colorSign, qdepth) {
@@ -102,7 +104,7 @@ function quiescence(game, alpha, beta, colorSign, qdepth) {
   if (standPat > alpha) alpha = standPat;
 
   const moves = game.allLegalMoves(game.turn).filter((m) => m.capture || m.promotion);
-  const ordered = orderMoves(moves);
+  const ordered = orderMoves(moves, game);
   for (const move of ordered) {
     const child = game.clone();
     child.makeMove({ from: move.from, to: move.to, promotion: move.promotion || null });
@@ -126,7 +128,7 @@ function negamax(game, depth, alpha, beta, colorSign, useQuiescence, deadline) {
     return colorSign * evaluate(game);
   }
 
-  const moves = orderMoves(game.allLegalMoves(game.turn));
+  const moves = orderMoves(game.allLegalMoves(game.turn), game);
   if (moves.length === 0) {
     return game.isInCheck(game.turn) ? -MATE_SCORE - depth : 0;
   }
@@ -161,7 +163,7 @@ function pickMove(game, difficulty) {
 
   const colorSign = game.turn === "w" ? 1 : -1;
   const deadline = performance.now() + cfg.timeMs;
-  const ordered = orderMoves(rootMoves);
+  const ordered = orderMoves(rootMoves, game);
 
   let scored = [];
   let searchDepth = cfg.depth;
