@@ -91,6 +91,17 @@ python3 -m http.server
 
 No build step, no dependencies — apenas HTML, CSS e JS estáticos.
 
+
+## 🐳 Docker
+
+```bash
+docker build -t xadrez .
+docker run -p 8080:8080 xadrez
+# depois abre http://localhost:8080
+```
+
+---
+
 Para verificar o motor de regras e o bot (corre também automaticamente no GitHub Actions a cada push):
 
 ```bash
@@ -115,4 +126,4 @@ Sem esta configuração, a app funciona normalmente em todos os outros modos —
 
 ---
 
-Developed by **David Arsénio Martins**
+Developed by **David Arsénio Martins**, Dockerized by **hellojaviergarcia**
