@@ -82,6 +82,12 @@ const STRINGS = {
     mpErrorFinished: "Essa partida já terminou.",
     mpErrorLobbyFull: "Todas as salas rápidas estão ocupadas. Tenta criar uma sala normal.",
     mpErrorGeneric: "Não foi possível entrar na sala. Verifica o código.",
+    footerPrivacy: "Privacidade",
+    footerSupport: "Suporte",
+    chatMute: "🔇 Silenciar",
+    chatUnmute: "🔊 Reativar",
+    chatReport: "🚩 Denunciar",
+    chatReportConfirm: "Denunciar este jogador? O chat dele fica silenciado e abrimos um email para ividi.dev@gmail.com com a sala e as mensagens recentes.",
     mpYourName: "O teu nome",
     mpNamePlaceholder: "Como te chamam?",
     mpDefaultName: "Jogador",
@@ -167,6 +173,12 @@ const STRINGS = {
     mpErrorFinished: "That match has already ended.",
     mpErrorLobbyFull: "All quick-play rooms are full right now. Try creating a normal room.",
     mpErrorGeneric: "Couldn't join the room. Check the code.",
+    footerPrivacy: "Privacy",
+    footerSupport: "Support",
+    chatMute: "🔇 Mute",
+    chatUnmute: "🔊 Unmute",
+    chatReport: "🚩 Report",
+    chatReportConfirm: "Report this player? Their chat gets muted and we open an email to ividi.dev@gmail.com with the room and recent messages.",
     mpYourName: "Your name",
     mpNamePlaceholder: "What should we call you?",
     mpDefaultName: "Player",
@@ -523,7 +535,7 @@ let aiWorker = null;
 let requestCounter = 0;
 
 function getWorker() {
-  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20261007c");
+  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20261007d");
   return aiWorker;
 }
 
@@ -810,10 +822,40 @@ function mpErrorMessage(err) {
   return t("mpErrorGeneric");
 }
 
+/* Chat moderation (App Store rule 1.2): mute hides the opponent's messages for this room, and a
+ * report opens a pre-filled email with the room and their recent messages. */
+let opponentMuted = false;
+
+function setOpponentMuted(muted) {
+  opponentMuted = muted;
+  el("chat-messages").querySelectorAll(".chat-msg-theirs").forEach((m) => m.classList.toggle("is-muted", muted));
+  const btn = el("chat-mute");
+  btn.dataset.i18n = muted ? "chatUnmute" : "chatMute";
+  btn.textContent = t(btn.dataset.i18n);
+}
+
+function reportOpponent() {
+  if (!confirm(t("chatReportConfirm"))) return;
+  setOpponentMuted(true);
+  const room = (window.MP && window.MP.roomCode) || "?";
+  const name = (window.MP && window.MP.opponentName) || t("mpOpponent");
+  const theirs = [...el("chat-messages").querySelectorAll(".chat-msg-theirs")].slice(-10).map((m) => `> ${m.textContent}`);
+  const body = [
+    `Sala: ${room}`, `Adversário: ${name}`, `Data: ${new Date().toISOString()}`, "",
+    "Mensagens recentes do adversário:", theirs.length ? theirs.join("\n") : "(nenhuma)", "", "Descreve o problema:", "",
+  ].join("\n");
+  const subject = `Denúncia Xadrez — sala ${room}`;
+  window.location.href = `mailto:ividi.dev@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+el("chat-mute").addEventListener("click", () => setOpponentMuted(!opponentMuted));
+el("chat-report").addEventListener("click", reportOpponent);
+
 function appendChatMessage(msg) {
   const list = el("chat-messages");
   const div = document.createElement("div");
   div.className = "chat-msg " + (msg.mine ? "chat-msg-mine" : "chat-msg-theirs");
+  if (!msg.mine && opponentMuted) div.classList.add("is-muted");
   div.textContent = msg.text;
   list.appendChild(div);
   list.scrollTop = list.scrollHeight;
@@ -861,6 +903,7 @@ async function handleCreateRoom() {
   currentMode = "multiplayer";
   newMainGame();
   el("chat-messages").innerHTML = "";
+  setOpponentMuted(false);
   showMpError("");
   try {
     await window.MP.createRoom();
@@ -876,6 +919,7 @@ async function handleJoinRoom(code) {
   currentMode = "multiplayer";
   newMainGame();
   el("chat-messages").innerHTML = "";
+  setOpponentMuted(false);
   showMpError("");
   try {
     await window.MP.joinRoom(code);
@@ -892,6 +936,7 @@ async function handleQuickPlay() {
   currentMode = "multiplayer";
   newMainGame();
   el("chat-messages").innerHTML = "";
+  setOpponentMuted(false);
   showMpError("");
   try {
     const result = await window.MP.quickPlay();

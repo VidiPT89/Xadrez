@@ -1,7 +1,7 @@
 /* Multiplayer networking layer: rooms, moves, chat and presence over Firestore.
  * Exposes a small event-driven API on window.MP; script.js is the only other file that touches
  * BoardController, so this module never reaches into the DOM. */
-import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20261007c";
+import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20261007d";
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc,
   query, orderBy, onSnapshot, serverTimestamp,
@@ -25,6 +25,36 @@ export const MAX_NAME_LENGTH = 20;
 /** Trims, collapses whitespace and drops control characters; "" when nothing usable is left. */
 export function cleanName(raw) {
   return String(raw || "").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME_LENGTH);
+}
+
+export const REPORT_EMAIL = "ividi.dev@gmail.com";
+
+// App Store rule 1.2 (user-generated content): offensive words are masked before display.
+// Stems match by prefix (plurals, inflections); short words that would hit innocent ones
+// ("Dickens", "cockpit") match exactly. PT-PT: "bicha" is a queue and "puto" a kid, so neither.
+const BLOCKED_STEMS = [
+  "caralh", "foda", "fodas", "fodid", "merda", "paneleir", "panasc", "cabrao", "otario",
+  "idiota", "imbecil", "estupid", "atrasad", "mongoloid", "retardad", "filhodaputa",
+  "fuck", "shit", "bitch", "cunt", "pussy", "asshole", "bastard", "slut", "whore",
+  "retard", "faggot", "nigg", "idiot", "moron", "stupid",
+];
+const BLOCKED_WORDS = new Set([
+  "puta", "putas", "cona", "pila", "corno", "cornos", "fode", "fdp", "crl", "pqp", "vsf", "vtnc",
+  "dick", "cock", "fag", "kys", "rape",
+]);
+
+function foldWord(word) {
+  return word.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+/** Replaces each offending word with "•••", leaving the rest of the message intact. */
+export function maskOffensive(text) {
+  return String(text).split(" ").map((word) => {
+    const folded = foldWord(word);
+    if (!folded) return word;
+    const blocked = BLOCKED_WORDS.has(folded) || BLOCKED_STEMS.some((stem) => folded.startsWith(stem));
+    return blocked ? "•••" : word;
+  }).join(" ");
 }
 
 const state = {
@@ -99,7 +129,7 @@ function attachRoomListener() {
     state.lastOppPresence = state.role === "host" ? data.guestPresence : data.hostPresence;
     // The name rides inside the presence map (the room's security rules reject new top-level
     // fields). Older clients rewrite presence without it, so keep the last name we saw.
-    const oppName = cleanName(state.lastOppPresence && state.lastOppPresence.name);
+    const oppName = maskOffensive(cleanName(state.lastOppPresence && state.lastOppPresence.name));
     if (oppName && oppName !== state.opponentName) {
       state.opponentName = oppName;
       if (MP.onOpponentName) MP.onOpponentName(oppName);
@@ -135,7 +165,8 @@ function attachChatListener() {
       if (change.type !== "added") return;
       const d = change.doc.data();
       if (isStale(d.sentAt)) return;
-      if (MP.onChat) MP.onChat({ uid: d.uid, text: d.text, mine: d.uid === state.myUid });
+      const mine = d.uid === state.myUid;
+      if (MP.onChat) MP.onChat({ uid: d.uid, text: mine ? d.text : maskOffensive(d.text), mine });
     });
   });
 }
