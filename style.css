@@ -498,6 +498,11 @@ button { font-family: inherit; }
   gap: 10px;
 }
 .chat-card.is-hidden { display: none; }
+.chat-tools { display: flex; justify-content: space-between; margin: 6px 0; }
+.chat-tool { background: none; border: none; color: var(--ink-dim); font: inherit; font-size: 0.78rem; cursor: pointer; padding: 4px 2px; }
+.chat-tool:hover { color: var(--ink); }
+.chat-tool-danger { color: var(--danger); }
+.chat-msg-theirs.is-muted { display: none; }
 
 .chat-messages {
   max-height: 180px;
