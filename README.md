@@ -91,8 +91,13 @@ python3 -m http.server
 
 No build step, no dependencies — apenas HTML, CSS e JS estáticos.
 
+Para verificar o motor de regras e o bot (corre também automaticamente no GitHub Actions a cada push):
 
-## 🐳 Docker
+```bash
+node tests/engine.test.js
+```
+
+### 🐳 Docker
 
 ```bash
 docker build -t xadrez .
@@ -101,12 +106,6 @@ docker run -p 8080:8080 xadrez
 ```
 
 ---
-
-Para verificar o motor de regras e o bot (corre também automaticamente no GitHub Actions a cada push):
-
-```bash
-node tests/engine.test.js
-```
 
 ## 🌐 Multijogador
 
