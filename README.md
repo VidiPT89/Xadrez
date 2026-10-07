@@ -97,6 +97,16 @@ Para verificar o motor de regras e o bot (corre também automaticamente no GitHu
 node tests/engine.test.js
 ```
 
+### 🐳 Docker
+
+```bash
+docker build -t xadrez .
+docker run -p 8080:8080 xadrez
+# depois abre http://localhost:8080
+```
+
+---
+
 ## 🌐 Multijogador
 
 O modo Multijogador usa [Firebase](https://firebase.google.com/) (Firestore + autenticação anónima) para sincronizar as jogadas e o chat entre dois dispositivos em tempo real — sem servidor próprio. Para ativar:
@@ -115,4 +125,4 @@ Sem esta configuração, a app funciona normalmente em todos os outros modos —
 
 ---
 
-Developed by **David Arsénio Martins**
+Developed by **David Arsénio Martins**, Dockerized by **hellojaviergarcia**
