@@ -22,7 +22,7 @@
 - 🎞️ Movimento das peças animado (incluindo roque) em vez de instantâneo
 - ↩️ ↪️ Voltar Atrás / Avançar no modo Contra o Bot
 - 🌌 Fundo ambiente animado, independente do tabuleiro
-- 🌐 Modo Multijogador — joga online com um amigo através de uma sala com código de 6 caracteres ou link de convite, com chat em tempo real, indicador de presença do adversário e desistência
+- 🌐 Modo Multijogador — joga online com um amigo: Jogo Rápido (sem código), sala com código de 6 caracteres ou link de convite, nome de jogador, chat em tempo real, indicador de presença do adversário e desistência
 
 ## 🛠️ Tech Stack
 
@@ -42,6 +42,7 @@ Xadrez/
 ├── firebase-config.js         # Configuração do projeto Firebase (ver secção Multijogador)
 ├── firebase-init.js            # Inicialização do Firebase + autenticação anónima
 ├── chess-multiplayer.js         # Salas, lances, chat e presença em tempo real via Firestore
+├── tests/engine.test.js          # Testes do motor (perft, empates) e do bot — `node tests/engine.test.js`
 ├── LICENSE
 └── README.md
 ```
@@ -89,6 +90,12 @@ python3 -m http.server
 ```
 
 No build step, no dependencies — apenas HTML, CSS e JS estáticos.
+
+Para verificar o motor de regras e o bot (corre também automaticamente no GitHub Actions a cada push):
+
+```bash
+node tests/engine.test.js
+```
 
 ## 🌐 Multijogador
 

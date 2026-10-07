@@ -1,7 +1,7 @@
 /* Multiplayer networking layer: rooms, moves, chat and presence over Firestore.
  * Exposes a small event-driven API on window.MP; script.js is the only other file that touches
  * BoardController, so this module never reaches into the DOM. */
-import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20261007b";
+import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20261007c";
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc,
   query, orderBy, onSnapshot, serverTimestamp,
@@ -54,7 +54,7 @@ export const MP = {
   onChat: null,              // (message: {uid,text,mine}) => void
   onOpponentJoined: null,    // () => void — fires once, for the host, when a guest claims the room
   onOpponentPresence: null,  // (online: boolean) => void
-  onGameFinished: null,      // (result: string) => void — e.g. "resign-w"
+  onGameFinished: null,      // (result: string) => void — "resign-w", or a rules ending like "checkmate-b"
   onOpponentName: null,      // (name: string) => void — "" until the opponent's client sends one
   get myColor() { return state.myColor; },
   get roomCode() { return state.roomCode; },
@@ -324,6 +324,15 @@ export async function resign() {
   });
 }
 
+/** Marks the room finished after a rules ending (e.g. "checkmate-w", "stalemate", "draw-50"), so a
+ * Quick Play slot frees up at once instead of waiting for both presences to go stale. */
+export async function finishGame(result) {
+  if (!state.roomCode) return;
+  await updateDoc(doc(db, "rooms", state.roomCode), {
+    status: "finished", result, updatedAt: serverTimestamp(),
+  }).catch((err) => console.error("Multiplayer: failed to mark the game finished", err));
+}
+
 export function leaveRoom() {
   markOffline();
   if (state.unsubRoom) state.unsubRoom();
@@ -349,6 +358,6 @@ export function setName(name) {
   state.myName = cleanName(name);
 }
 
-Object.assign(MP, { setName, createRoom, joinRoom, quickPlay, sendMove, sendChat, resign, leaveRoom });
+Object.assign(MP, { setName, createRoom, joinRoom, quickPlay, sendMove, sendChat, resign, finishGame, leaveRoom });
 window.MP = MP;
 window.dispatchEvent(new CustomEvent("mp-ready"));

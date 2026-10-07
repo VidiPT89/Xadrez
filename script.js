@@ -523,7 +523,7 @@ let aiWorker = null;
 let requestCounter = 0;
 
 function getWorker() {
-  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20261007b");
+  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20261007c");
   return aiWorker;
 }
 
@@ -654,15 +654,19 @@ function onMainMove(record, meta = {}) {
   redoStack = [];
   renderMoveList();
   renderStatus();
+  const isMyNetworkMove = currentMode === "multiplayer" && !meta.external && window.MP && record.color === window.MP.myColor;
+  if (isMyNetworkMove) window.MP.sendMove({ from: record.from, to: record.to, promotion: record.promotion });
   if (mainBoard.game.isGameOver()) {
+    // Whoever played the final move records the ending, which also frees a Quick Play slot.
+    if (isMyNetworkMove) {
+      const game = mainBoard.game;
+      window.MP.finishGame(game.result === "checkmate" ? `checkmate-${game.winner}` : game.result);
+    }
     showResultModal();
     return;
   }
   if (currentMode === "bot" && mainBoard.game.turn === BOT_COLOR) {
     requestBotMove();
-  }
-  if (currentMode === "multiplayer" && !meta.external && window.MP && record.color === window.MP.myColor) {
-    window.MP.sendMove({ from: record.from, to: record.to, promotion: record.promotion });
   }
 }
 
@@ -824,8 +828,10 @@ function updatePresenceIndicator(online) {
 }
 
 function showMultiplayerResult(result) {
+  // Checkmate/draw endings are detected by the local engine, which already shows the result.
+  if (!result.startsWith("resign-")) return;
   mainBoard.locked = true;
-  const resignedColor = result.startsWith("resign-") ? result.slice(-1) : null;
+  const resignedColor = result.slice(-1);
   const iWon = resignedColor && window.MP && resignedColor !== window.MP.myColor;
   el("result-icon").textContent = iWon ? "🏆" : "🏳️";
   el("result-title").textContent = iWon ? t("resultOpponentResignedTitle") : t("resultYouResignedTitle");
