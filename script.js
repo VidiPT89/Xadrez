@@ -53,7 +53,7 @@ const STRINGS = {
     resultCheckmateTitle: "Xeque-mate!",
     resultCheckmateWhite: "As Brancas vencem.",
     resultCheckmateBlack: "As Pretas vencem.",
-    resultStalemateTitle: "Tabuada por Afogamento",
+    resultStalemateTitle: "Empate por Afogamento",
     resultStalemateText: "Nenhum jogador tem lances legais. O jogo termina empatado.",
     resultDraw50Title: "Empate",
     resultDraw50Text: "50 lances sem capturas nem movimento de peão.",
@@ -192,6 +192,7 @@ function applyTranslations() {
   });
   el("lang-flag").textContent = lang === "pt" ? "🇵🇹" : "🇬🇧";
   el("lang-label").textContent = lang.toUpperCase();
+  if (currentMode === "multiplayer" && window.MP) updatePresenceIndicator(window.MP.opponentOnline);
   renderStatus();
   renderLesson();
   renderHelp();
@@ -455,7 +456,6 @@ class BoardController {
   }
 
   _finalizeMove(move, { external = false } = {}) {
-    const wasCapture = move.capture;
     const fromRect = this._cellFor(move.from.r, move.from.c).getBoundingClientRect();
     let rookAnim = null;
     if (move.castle) {
@@ -475,7 +475,7 @@ class BoardController {
     if (rookAnim) this._slidePiece(this._cellFor(rookAnim.r, rookAnim.c), rookAnim.fromRect);
     if (record.status === "check") SFX.check();
     else if (this.game.isGameOver()) SFX.end();
-    else if (wasCapture) SFX.capture();
+    else if (record.capture) SFX.capture();
     else SFX.move();
     if (this.onAfterMove) this.onAfterMove(record, { external });
   }
@@ -499,7 +499,7 @@ class BoardController {
   }
 
   applyExternalMove(move) {
-    this._finalizeMove({ from: move.from, to: move.to, promotion: move.promotion, capture: !!this.game.pieceAt(move.to.r, move.to.c) }, { external: true });
+    this._finalizeMove({ from: move.from, to: move.to, promotion: move.promotion }, { external: true });
   }
 }
 
@@ -512,7 +512,7 @@ let aiWorker = null;
 let requestCounter = 0;
 
 function getWorker() {
-  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20260709e");
+  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20261007a");
   return aiWorker;
 }
 
@@ -520,6 +520,7 @@ let redoStack = [];
 
 function newMainGame() {
   const game = new ChessGame();
+  mainBoard.flipped = false;
   mainBoard.setGame(game);
   mainBoard.locked = false;
   requestCounter++;
@@ -746,6 +747,11 @@ function showMpView(name) {
   });
 }
 
+/** Seats the local player at the bottom of the board — the guest plays Black. */
+function orientBoardForMyColor() {
+  mainBoard.setFlipped(!!(window.MP && window.MP.myColor === "b"));
+}
+
 function showMpWaitingView(code, isQuickPlay = false) {
   // Only a deliberately-created room is worth showing/sharing a code for — Quick Play's whole
   // point is that no code is needed, so keep that wait screen plain.
@@ -820,6 +826,7 @@ async function handleJoinRoom(code) {
   showMpError("");
   try {
     await window.MP.joinRoom(code);
+    orientBoardForMyColor();
     showScreen("screen-game");
   } catch (err) {
     showMpError(mpErrorMessage(err));
@@ -834,6 +841,7 @@ async function handleQuickPlay() {
   showMpError("");
   try {
     const result = await window.MP.quickPlay();
+    orientBoardForMyColor();
     if (result.role === "host") {
       showMpWaitingView(window.MP.roomCode, true);
     } else {
@@ -914,11 +922,11 @@ function placePieces(list) {
   return board;
 }
 
-function customGame(pieceList, turn = "w") {
+function customGame(pieceList, { turn = "w", castling = {} } = {}) {
   const g = new ChessGame();
   g.board = placePieces(pieceList);
   g.turn = turn;
-  g.castling = { wK: false, wQ: false, bK: false, bQ: false };
+  g.castling = { wK: false, wQ: false, bK: false, bQ: false, ...castling };
   g.enPassant = null;
   g.history = [];
   return g;
@@ -940,12 +948,12 @@ const LESSONS = [
     id: "special",
     title: { pt: "2. Regras especiais", en: "2. Special rules" },
     text: {
-      pt: "O roque move o rei duas casas em direção à torre (e a torre salta para o outro lado do rei), desde que nenhum dos dois se tenha mexido e as casas entre eles estejam livres e fora de ataque.\n\nO en passant permite a um peão capturar um peão adversário que acabou de avançar duas casas, como se tivesse avançado só uma.\n\nUm peão que chega à última fileira é promovido — normalmente a dama.\n\nXeque é quando o rei está sob ataque; xeque-mate é quando não há forma de escapar; afogamento (stalemate) é quando o jogador não tem lances legais mas não está em xeque — resulta em empate.",
-      en: "Castling moves the king two squares toward a rook (and the rook jumps to the other side of the king), as long as neither has moved and the squares between them are empty and not under attack.\n\nEn passant lets a pawn capture an enemy pawn that just advanced two squares, as if it had only moved one.\n\nA pawn reaching the last rank is promoted — usually to a queen.\n\nCheck is when the king is under attack; checkmate is when there is no way to escape; stalemate is when a player has no legal move but isn't in check — the game is a draw.",
+      pt: "O roque move o rei duas casas em direção à torre (e a torre salta para o outro lado do rei), desde que nenhum dos dois se tenha mexido e as casas entre eles estejam livres e fora de ataque.\n\nO en passant permite a um peão capturar um peão adversário que acabou de avançar duas casas, como se tivesse avançado só uma.\n\nUm peão que chega à última fileira é promovido — normalmente a dama.\n\nXeque é quando o rei está sob ataque; xeque-mate é quando não há forma de escapar; afogamento (stalemate) é quando o jogador não tem lances legais mas não está em xeque — resulta em empate.\n\nToca no rei para veres o roque para os dois lados.",
+      en: "Castling moves the king two squares toward a rook (and the rook jumps to the other side of the king), as long as neither has moved and the squares between them are empty and not under attack.\n\nEn passant lets a pawn capture an enemy pawn that just advanced two squares, as if it had only moved one.\n\nA pawn reaching the last rank is promoted — usually to a queen.\n\nCheck is when the king is under attack; checkmate is when there is no way to escape; stalemate is when a player has no legal move but isn't in check — the game is a draw.\n\nTap the king to see castling on both sides.",
     },
     setup: () => customGame([
       ["e1", "k", "w"], ["h1", "r", "w"], ["a1", "r", "w"], ["e8", "k", "b"],
-    ]),
+    ], { castling: { wK: true, wQ: true } }),
   },
   {
     id: "opening",
@@ -963,11 +971,11 @@ const LESSONS = [
     id: "tactics",
     title: { pt: "4. Táticas básicas", en: "4. Basic tactics" },
     text: {
-      pt: "Garfo: uma peça ataca duas peças adversárias ao mesmo tempo (o cavalo é excelente nisto). Cravo: uma peça não se pode mover porque exporia uma peça mais valiosa atrás dela. Espeto: como o cravo, mas a peça mais valiosa está à frente e é forçada a mover-se, expondo a de trás. Ataque descoberto: mover uma peça revela o ataque de outra peça escondida atrás.\n\nToca no cavalo para veres um exemplo de garfo neste tabuleiro.",
-      en: "Fork: one piece attacks two enemy pieces at once (the knight is excellent at this). Pin: a piece can't move because it would expose a more valuable piece behind it. Skewer: like a pin, but the more valuable piece is in front and forced to move, exposing the one behind it. Discovered attack: moving one piece reveals an attack from another piece hidden behind it.\n\nTap the knight to see a fork example on this board.",
+      pt: "Garfo: uma peça ataca duas peças adversárias ao mesmo tempo (o cavalo é excelente nisto). Cravo: uma peça não se pode mover porque exporia uma peça mais valiosa atrás dela. Espeto: como o cravo, mas a peça mais valiosa está à frente e é forçada a mover-se, expondo a de trás. Ataque descoberto: mover uma peça revela o ataque de outra peça escondida atrás.\n\nJoga o cavalo para e5 e repara: ataca o rei e a torre ao mesmo tempo — um garfo.",
+      en: "Fork: one piece attacks two enemy pieces at once (the knight is excellent at this). Pin: a piece can't move because it would expose a more valuable piece behind it. Skewer: like a pin, but the more valuable piece is in front and forced to move, exposing the one behind it. Discovered attack: moving one piece reveals an attack from another piece hidden behind it.\n\nMove the knight to e5 and notice it attacks the king and the rook at once — a fork.",
     },
     setup: () => customGame([
-      ["e5", "n", "w"], ["d7", "k", "b"], ["f7", "r", "b"],
+      ["c4", "n", "w"], ["g1", "k", "w"], ["d7", "k", "b"], ["f7", "r", "b"],
     ]),
   },
   {
@@ -1035,15 +1043,15 @@ const HELP_BLOCKS = [
   {
     title: { pt: "Modos de jogo", en: "Game modes" },
     body: {
-      pt: "• 1 vs 1 — dois jogadores alternam turnos no mesmo dispositivo.\n• Contra o Bot — escolhe entre 4 níveis de dificuldade (Iniciante a Difícil); jogas sempre com as Brancas e o bot joga com as Pretas.\n• Tutorial — lições passo-a-passo sobre movimentação, regras especiais, aberturas, táticas e finais.",
-      en: "• 1 vs 1 — two players take turns on the same device.\n• Vs Bot — choose between 4 difficulty levels (Beginner to Hard); you always play White and the bot plays Black.\n• Tutorial — step-by-step lessons on piece movement, special rules, openings, tactics and endgames.",
+      pt: "• 1 vs 1 — dois jogadores alternam turnos no mesmo dispositivo.\n• Contra o Bot — escolhe entre 4 níveis de dificuldade (Iniciante a Difícil); jogas sempre com as Brancas e o bot joga com as Pretas.\n• Multijogador — joga online com um amigo: Jogo Rápido (sem código), criar uma sala e partilhar o código/link, ou entrar com um código. Inclui chat.\n• Tutorial — lições passo-a-passo sobre movimentação, regras especiais, aberturas, táticas e finais.",
+      en: "• 1 vs 1 — two players take turns on the same device.\n• Vs Bot — choose between 4 difficulty levels (Beginner to Hard); you always play White and the bot plays Black.\n• Multiplayer — play online with a friend: Quick Play (no code), create a room and share its code/link, or join with a code. Includes chat.\n• Tutorial — step-by-step lessons on piece movement, special rules, openings, tactics and endgames.",
     },
   },
   {
     title: { pt: "Controlos", en: "Controls" },
     body: {
-      pt: "🔄 Inverter — roda o tabuleiro 180°.\n♻️ Novo Jogo — reinicia a partida atual.\n⬅️ Menu — volta ao menu principal.\n🔊 — liga/desliga o som.\n🇵🇹/🇬🇧 — muda o idioma entre Português e Inglês.",
-      en: "🔄 Flip — rotates the board 180°.\n♻️ New Game — restarts the current match.\n⬅️ Menu — returns to the main menu.\n🔊 — toggles sound on/off.\n🇵🇹/🇬🇧 — switches the language between Portuguese and English.",
+      pt: "🔄 Inverter — roda o tabuleiro 180°.\n↩️ Voltar Atrás / ↪️ Avançar — desfaz ou refaz a tua última jogada (Contra o Bot).\n🏳️ Desistir — abandona a partida (Multijogador).\n♻️ Novo Jogo — reinicia a partida atual.\n⬅️ Menu — volta ao menu principal.\n🔊 — liga/desliga o som.\n🇵🇹/🇬🇧 — muda o idioma entre Português e Inglês.",
+      en: "🔄 Flip — rotates the board 180°.\n↩️ Undo / ↪️ Redo — takes back or replays your last move (Vs Bot).\n🏳️ Resign — concedes the game (Multiplayer).\n♻️ New Game — restarts the current match.\n⬅️ Menu — returns to the main menu.\n🔊 — toggles sound on/off.\n🇵🇹/🇬🇧 — switches the language between Portuguese and English.",
     },
   },
 ];
@@ -1081,7 +1089,6 @@ function closeIntro() {
   introOpen = false;
   clearTimeout(introTimer);
   introOverlay.classList.remove("is-open");
-  ensureAudio();
   playTone(440, 0.07);
 }
 el("intro-play").addEventListener("click", closeIntro);

@@ -1,7 +1,7 @@
 /* Multiplayer networking layer: rooms, moves, chat and presence over Firestore.
  * Exposes a small event-driven API on window.MP; script.js is the only other file that touches
  * BoardController, so this module never reaches into the DOM. */
-import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20260709e";
+import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20261007a";
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc,
   query, orderBy, onSnapshot, serverTimestamp,
@@ -26,6 +26,9 @@ const state = {
   myColor: null,
   role: null, // "host" | "guest"
   appliedPly: -1,
+  sentPlies: new Set(), // plies this session wrote — only those are already on the local board
+  roomCreatedAtMs: 0, // lobby rooms get recycled; docs older than this belong to a previous game
+  finishedNotified: false,
   unsubRoom: null,
   unsubMoves: null,
   unsubChat: null,
@@ -43,11 +46,16 @@ export const MP = {
   onOpponentJoined: null,    // () => void — fires once, for the host, when a guest claims the room
   onOpponentPresence: null,  // (online: boolean) => void
   onGameFinished: null,      // (result: string) => void — e.g. "resign-w"
-  onError: null,             // (err) => void
   get myColor() { return state.myColor; },
   get roomCode() { return state.roomCode; },
-  get myUid() { return state.myUid; },
+  get opponentOnline() { return state.opponentOnline; },
 };
+
+/** True for docs written before the current game began (left behind in a recycled room). A null
+ * timestamp is a still-pending local write, which is by definition current. */
+function isStale(ts) {
+  return !!(ts && ts.toMillis && ts.toMillis() < state.roomCreatedAtMs);
+}
 
 function isFresh(ts) {
   if (!ts || !ts.toMillis) return false;
@@ -72,7 +80,10 @@ function attachRoomListener() {
       state.sawGuest = true;
       if (MP.onOpponentJoined) MP.onOpponentJoined();
     }
-    if (data.status === "finished" && data.result && MP.onGameFinished) MP.onGameFinished(data.result);
+    if (data.status === "finished" && data.result && !state.finishedNotified) {
+      state.finishedNotified = true;
+      if (MP.onGameFinished) MP.onGameFinished(data.result);
+    }
     state.lastOppPresence = state.role === "host" ? data.guestPresence : data.hostPresence;
     recomputePresence();
   });
@@ -85,11 +96,13 @@ function attachMovesListener() {
   const movesCol = collection(db, "rooms", state.roomCode, "moves");
   state.unsubMoves = onSnapshot(query(movesCol, orderBy("ply")), (snap) => {
     snap.docChanges().forEach((change) => {
-      if (change.type !== "added") return;
+      // "modified" too: in a recycled room a new move can overwrite an old game's doc for that ply.
+      if (change.type === "removed") return;
       const d = change.doc.data();
-      if (d.ply <= state.appliedPly) return;
+      if (d.ply <= state.appliedPly || isStale(d.playedAt)) return;
       state.appliedPly = d.ply;
-      if (d.by === state.myUid) return; // my own move, applied locally already when I made it
+      // My own move from this session is already on the board; after a reload it isn't, so replay it.
+      if (state.sentPlies.has(d.ply)) return;
       if (MP.onRemoteMove) MP.onRemoteMove({ from: d.from, to: d.to, promotion: d.promotion || null });
     });
   });
@@ -102,6 +115,7 @@ function attachChatListener() {
     snap.docChanges().forEach((change) => {
       if (change.type !== "added") return;
       const d = change.doc.data();
+      if (isStale(d.sentAt)) return;
       if (MP.onChat) MP.onChat({ uid: d.uid, text: d.text, mine: d.uid === state.myUid });
     });
   });
@@ -152,8 +166,16 @@ async function enterRoom(code, data) {
     throw new Error("room-full");
   }
 
+  // Read back the stored createdAt (a server timestamp) so listeners can skip leftovers from a
+  // previous game in this room.
+  const fresh = await getDoc(doc(db, "rooms", code)).catch(() => null);
+  const createdAt = fresh && fresh.exists() ? fresh.data().createdAt : null;
+  state.roomCreatedAtMs = createdAt && createdAt.toMillis ? createdAt.toMillis() : 0;
+
   state.roomCode = code;
   state.appliedPly = -1;
+  state.sentPlies = new Set();
+  state.finishedNotified = false;
   state.sawGuest = !!data.guestUid || state.role === "guest";
   state.opponentOnline = false;
   state.lastOppPresence = null;
@@ -250,12 +272,13 @@ export async function sendMove({ from, to, promotion }) {
   if (!state.roomCode) return;
   const ply = state.appliedPly + 1;
   const plyId = String(ply).padStart(4, "0");
+  state.sentPlies.add(ply);
   try {
     await setDoc(doc(db, "rooms", state.roomCode, "moves", plyId), {
       ply, from, to, promotion: promotion || null, by: state.myUid, playedAt: serverTimestamp(),
     });
   } catch (err) {
-    if (MP.onError) MP.onError(err);
+    console.error("Multiplayer: failed to send move", err);
   }
 }
 
@@ -287,6 +310,9 @@ export function leaveRoom() {
   state.role = null;
   state.myColor = null;
   state.appliedPly = -1;
+  state.sentPlies = new Set();
+  state.roomCreatedAtMs = 0;
+  state.finishedNotified = false;
   state.opponentOnline = false;
   state.lastOppPresence = null;
   state.sawGuest = false;

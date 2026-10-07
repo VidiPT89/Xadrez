@@ -74,6 +74,7 @@ class ChessGame {
     g.positionCounts = new Map(this.positionCounts);
     g.result = this.result;
     g.winner = this.winner;
+    g._movesCache = this._movesCache;
     return g;
   }
 
@@ -94,8 +95,21 @@ class ChessGame {
       }
     }
     key += `|${this.castling.wK ? 1 : 0}${this.castling.wQ ? 1 : 0}${this.castling.bK ? 1 : 0}${this.castling.bQ ? 1 : 0}`;
-    key += `|${this.enPassant ? squareName(this.enPassant.r, this.enPassant.c) : "-"}`;
+    key += `|${this._enPassantCapturable() ? squareName(this.enPassant.r, this.enPassant.c) : "-"}`;
     return key;
+  }
+
+  /** The en passant square only distinguishes positions (FIDE repetition rule) when a pawn of the
+   * side to move actually stands ready to capture onto it. */
+  _enPassantCapturable() {
+    if (!this.enPassant) return false;
+    const { r, c } = this.enPassant;
+    const pawnRow = this.turn === WHITE ? r + 1 : r - 1;
+    return [c - 1, c + 1].some((cc) => {
+      if (!inBounds(pawnRow, cc)) return false;
+      const p = this.board[pawnRow][cc];
+      return p && p.type === "p" && p.color === this.turn;
+    });
   }
 
   _recordPosition() {
@@ -322,6 +336,11 @@ class ChessGame {
 
   allLegalMoves(color = this.turn) {
     if (this.isGameOver()) return [];
+    // makeMove() already generates the reply list to detect mate/stalemate; reuse it (keyed by the
+    // full position, so any direct board edit invalidates it) instead of regenerating — this
+    // roughly triples the bot's search speed.
+    const key = color === this.turn ? this._positionKey() : null;
+    if (key && this._movesCache && this._movesCache.key === key) return this._movesCache.moves.slice();
     const moves = [];
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
@@ -329,6 +348,7 @@ class ChessGame {
         if (p && p.color === color) moves.push(...this._legalMovesForPiece(r, c));
       }
     }
+    if (key) this._movesCache = { key, moves: moves.slice() };
     return moves;
   }
 
@@ -447,22 +467,18 @@ class ChessGame {
   }
 
   _isInsufficientMaterial() {
-    const pieces = [];
-    for (let r = 0; r < 8; r++)
-      for (let c = 0; c < 8; c++)
-        if (this.board[r][c]) pieces.push(this.board[r][c]);
-    if (pieces.length > 4) return false;
-    const nonKings = pieces.filter((p) => p.type !== "k");
-    if (nonKings.length === 0) return true;
-    if (nonKings.length === 1 && (nonKings[0].type === "b" || nonKings[0].type === "n")) return true;
-    if (
-      nonKings.length === 2 &&
-      nonKings.every((p) => p.type === "b") &&
-      pieces.filter((p) => p.type === "b").length === 2
-    ) {
-      return true;
+    const minors = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        const p = this.board[r][c];
+        if (!p || p.type === "k") continue;
+        if (p.type !== "b" && p.type !== "n") return false;
+        minors.push({ type: p.type, squareColor: (r + c) % 2 });
+      }
     }
-    return false;
+    if (minors.length <= 1) return true; // K vs K, or K + single minor vs K
+    // Any number of bishops, all on the same square color, can never deliver mate.
+    return minors.every((m) => m.type === "b" && m.squareColor === minors[0].squareColor);
   }
 
   toState() {

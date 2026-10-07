@@ -1,5 +1,5 @@
 /* ==================== Chess AI — runs inside a Web Worker ==================== */
-importScripts("chess-engine.js?v=20260709e");
+importScripts("chess-engine.js?v=20261007a");
 
 const MATE_SCORE = 1000000;
 
@@ -166,7 +166,6 @@ function pickMove(game, difficulty) {
   const ordered = orderMoves(rootMoves, game);
 
   let scored = [];
-  let searchDepth = cfg.depth;
   if (cfg.timeMs >= 1500) {
     let currentBest = ordered;
     for (let d = 1; d <= cfg.depth; d++) {
@@ -178,16 +177,21 @@ function pickMove(game, difficulty) {
         results.push({ move, score });
         if (performance.now() > deadline) break;
       }
-      results.sort((a, b) => b.score - a.score);
-      currentBest = results.map((r) => r.move);
-      scored = results;
-      if (performance.now() > deadline) break;
+      // An iteration cut short by the deadline holds truncated (unreliable) scores and is missing
+      // moves — keep the last completed depth instead, unless there is nothing else yet.
+      const complete = results.length === currentBest.length && performance.now() <= deadline;
+      if (complete || scored.length === 0) {
+        results.sort((a, b) => b.score - a.score);
+        currentBest = results.map((r) => r.move);
+        scored = results;
+      }
+      if (!complete) break;
     }
   } else {
     for (const move of ordered) {
       const child = game.clone();
       child.makeMove({ from: move.from, to: move.to, promotion: move.promotion || null });
-      const score = -negamax(child, searchDepth - 1, -Infinity, Infinity, -colorSign, cfg.quiescence, deadline);
+      const score = -negamax(child, cfg.depth - 1, -Infinity, Infinity, -colorSign, cfg.quiescence, deadline);
       scored.push({ move, score });
     }
     scored.sort((a, b) => b.score - a.score);
