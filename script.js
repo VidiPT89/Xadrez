@@ -82,8 +82,13 @@ const STRINGS = {
     mpErrorFinished: "Essa partida já terminou.",
     mpErrorLobbyFull: "Todas as salas rápidas estão ocupadas. Tenta criar uma sala normal.",
     mpErrorGeneric: "Não foi possível entrar na sala. Verifica o código.",
-    mpOpponentOnline: "🟢 Adversário online",
-    mpOpponentOffline: "⚪ Adversário offline",
+    mpYourName: "O teu nome",
+    mpNamePlaceholder: "Como te chamam?",
+    mpDefaultName: "Jogador",
+    mpOpponent: "Adversário",
+    mpYouSuffix: "(tu)",
+    mpOpponentOnline: "🟢 {name} está online",
+    mpOpponentOffline: "⚪ {name} está offline",
     mpWaitingOpponent: "⏳ À espera do adversário…",
     resignGame: "🏳️ Desistir",
     resignConfirmText: "Tens a certeza que queres desistir da partida?",
@@ -162,8 +167,13 @@ const STRINGS = {
     mpErrorFinished: "That match has already ended.",
     mpErrorLobbyFull: "All quick-play rooms are full right now. Try creating a normal room.",
     mpErrorGeneric: "Couldn't join the room. Check the code.",
-    mpOpponentOnline: "🟢 Opponent online",
-    mpOpponentOffline: "⚪ Opponent offline",
+    mpYourName: "Your name",
+    mpNamePlaceholder: "What should we call you?",
+    mpDefaultName: "Player",
+    mpOpponent: "Opponent",
+    mpYouSuffix: "(you)",
+    mpOpponentOnline: "🟢 {name} is online",
+    mpOpponentOffline: "⚪ {name} is offline",
     mpWaitingOpponent: "⏳ Waiting for opponent…",
     resignGame: "🏳️ Resign",
     resignConfirmText: "Are you sure you want to resign this game?",
@@ -360,7 +370,8 @@ class BoardController {
 
   setFlipped(flipped) {
     this.flipped = flipped;
-    this.render();
+    this.boardEl.parentElement.classList.toggle("is-flipped", flipped);
+    if (this.game) this.render();
   }
 
   _displayCoords(r, c) {
@@ -512,7 +523,7 @@ let aiWorker = null;
 let requestCounter = 0;
 
 function getWorker() {
-  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20261007a");
+  if (!aiWorker) aiWorker = new Worker("chess-ai.js?v=20261007b");
   return aiWorker;
 }
 
@@ -520,7 +531,7 @@ let redoStack = [];
 
 function newMainGame() {
   const game = new ChessGame();
-  mainBoard.flipped = false;
+  mainBoard.setFlipped(false);
   mainBoard.setGame(game);
   mainBoard.locked = false;
   requestCounter++;
@@ -567,8 +578,21 @@ function redoLastTurn() {
   SFX.click();
 }
 
+/** "Brancas"/"Pretas" locally; in multiplayer, the players' names, mine marked "(tu)". */
+function renderPlayerLabels() {
+  const mp = currentMode === "multiplayer" && window.MP && window.MP.myColor ? window.MP : null;
+  const label = (color) => {
+    if (!mp) return t(color === "w" ? "whitePlayer" : "blackPlayer");
+    if (color === mp.myColor) return `${mp.myName || t("mpDefaultName")} ${t("mpYouSuffix")}`;
+    return mp.opponentName || t("mpOpponent");
+  };
+  el("white-label").textContent = label("w");
+  el("black-label").textContent = label("b");
+}
+
 function renderStatus() {
   if (!mainBoard.game) return;
+  renderPlayerLabels();
   const status = mainBoard.game.gameStatusText();
   el("status-turn").textContent = mainBoard.game.turn === "w" ? t("turnWhite") : t("turnBlack");
   el("player-tag-white").classList.toggle("is-active", mainBoard.game.turn === "w" && !status.over);
@@ -729,6 +753,10 @@ function ensureMpCallbacksWired() {
   window.MP.onChat = (msg) => appendChatMessage(msg);
   window.MP.onOpponentJoined = () => { if (currentMode === "multiplayer") showScreen("screen-game"); };
   window.MP.onOpponentPresence = (online) => updatePresenceIndicator(online);
+  window.MP.onOpponentName = () => {
+    updatePresenceIndicator(window.MP.opponentOnline);
+    renderPlayerLabels();
+  };
   window.MP.onGameFinished = (result) => showMultiplayerResult(result);
 }
 
@@ -745,6 +773,7 @@ function showMpView(name) {
   ["choice", "join", "waiting"].forEach((v) => {
     el(`mp-view-${v}`).classList.toggle("is-hidden", v !== name);
   });
+  el("mp-name-row").classList.toggle("is-hidden", name === "waiting");
 }
 
 /** Seats the local player at the bottom of the board — the guest plays Black. */
@@ -788,7 +817,8 @@ function appendChatMessage(msg) {
 
 function updatePresenceIndicator(online) {
   const presEl = el("mp-presence");
-  presEl.textContent = online ? t("mpOpponentOnline") : t("mpOpponentOffline");
+  const name = (window.MP && window.MP.opponentName) || t("mpOpponent");
+  presEl.textContent = t(online ? "mpOpponentOnline" : "mpOpponentOffline").replace("{name}", name);
   presEl.classList.toggle("mp-presence-online", online);
   presEl.classList.toggle("mp-presence-offline", !online);
 }
@@ -804,8 +834,24 @@ function showMultiplayerResult(result) {
   el("result-overlay").classList.add("is-open");
 }
 
+const NAME_KEY = "xadrez-name";
+
+/** Stores the typed name (or the default) and hands it to MP before any room action. */
+function commitPlayerName() {
+  const input = el("mp-name-input");
+  const typed = input.value.replace(/\s+/g, " ").trim().slice(0, 20);
+  input.value = typed;
+  try { localStorage.setItem(NAME_KEY, typed); } catch (e) { /* storage unavailable */ }
+  window.MP.setName(typed || t("mpDefaultName"));
+}
+
+function loadPlayerName() {
+  try { el("mp-name-input").value = localStorage.getItem(NAME_KEY) || ""; } catch (e) { /* storage unavailable */ }
+}
+
 async function handleCreateRoom() {
   if (!window.MP || !window.MP.configured) return;
+  commitPlayerName();
   currentMode = "multiplayer";
   newMainGame();
   el("chat-messages").innerHTML = "";
@@ -820,6 +866,7 @@ async function handleCreateRoom() {
 
 async function handleJoinRoom(code) {
   if (!window.MP || !window.MP.configured) return;
+  commitPlayerName();
   currentMode = "multiplayer";
   newMainGame();
   el("chat-messages").innerHTML = "";
@@ -835,6 +882,7 @@ async function handleJoinRoom(code) {
 
 async function handleQuickPlay() {
   if (!window.MP || !window.MP.configured) return;
+  commitPlayerName();
   currentMode = "multiplayer";
   newMainGame();
   el("chat-messages").innerHTML = "";
@@ -854,6 +902,7 @@ async function handleQuickPlay() {
 
 el("mode-multiplayer").addEventListener("click", () => {
   ensureMpCallbacksWired();
+  loadPlayerName();
   refreshMpConfiguredUI();
   showMpError("");
   showMpView("choice");
@@ -901,6 +950,7 @@ function autoJoinFromUrl() {
   if (!code || code.length !== 6) return;
   closeIntro();
   ensureMpCallbacksWired();
+  loadPlayerName();
   refreshMpConfiguredUI();
   showMpError("");
   showMpView("join");

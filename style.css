@@ -292,6 +292,9 @@ button { font-family: inherit; }
   font-size: 0.9rem;
 }
 
+/* Flipped board: the White tag follows the White pieces to the top. */
+.board-wrap.is-flipped { flex-direction: column-reverse; }
+
 .player-tag.is-active { border-color: var(--gold); color: var(--gold-soft); }
 
 .board {
@@ -451,6 +454,22 @@ button { font-family: inherit; }
   max-width: 220px;
 }
 .mp-code-input:focus { outline: none; border-color: var(--gold); }
+
+.mp-name-row { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; margin-bottom: 14px; }
+.mp-name-row.is-hidden { display: none; }
+.mp-name-label { font-size: 0.85rem; color: var(--ink-dim); }
+.mp-name-input {
+  background: var(--bg-soft);
+  border: 1px solid var(--panel-border);
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font: inherit;
+  text-align: center;
+  width: 100%;
+  max-width: 260px;
+}
+.mp-name-input:focus { outline: none; border-color: var(--gold); }
 
 .mp-error { color: var(--danger); font-size: 0.85rem; margin: 0; text-align: center; }
 .mp-error.is-hidden { display: none; }

@@ -1,7 +1,7 @@
 /* Multiplayer networking layer: rooms, moves, chat and presence over Firestore.
  * Exposes a small event-driven API on window.MP; script.js is the only other file that touches
  * BoardController, so this module never reaches into the DOM. */
-import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20261007a";
+import { auth, db, configured, ensureSignedIn } from "./firebase-init.js?v=20261007b";
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc,
   query, orderBy, onSnapshot, serverTimestamp,
@@ -20,8 +20,17 @@ function randomCode() {
   return s;
 }
 
+export const MAX_NAME_LENGTH = 20;
+
+/** Trims, collapses whitespace and drops control characters; "" when nothing usable is left. */
+export function cleanName(raw) {
+  return String(raw || "").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME_LENGTH);
+}
+
 const state = {
   roomCode: null,
+  myName: "",
+  opponentName: "",
   myUid: null,
   myColor: null,
   role: null, // "host" | "guest"
@@ -46,9 +55,12 @@ export const MP = {
   onOpponentJoined: null,    // () => void — fires once, for the host, when a guest claims the room
   onOpponentPresence: null,  // (online: boolean) => void
   onGameFinished: null,      // (result: string) => void — e.g. "resign-w"
+  onOpponentName: null,      // (name: string) => void — "" until the opponent's client sends one
   get myColor() { return state.myColor; },
   get roomCode() { return state.roomCode; },
   get opponentOnline() { return state.opponentOnline; },
+  get opponentName() { return state.opponentName; },
+  get myName() { return state.myName; },
 };
 
 /** True for docs written before the current game began (left behind in a recycled room). A null
@@ -85,6 +97,13 @@ function attachRoomListener() {
       if (MP.onGameFinished) MP.onGameFinished(data.result);
     }
     state.lastOppPresence = state.role === "host" ? data.guestPresence : data.hostPresence;
+    // The name rides inside the presence map (the room's security rules reject new top-level
+    // fields). Older clients rewrite presence without it, so keep the last name we saw.
+    const oppName = cleanName(state.lastOppPresence && state.lastOppPresence.name);
+    if (oppName && oppName !== state.opponentName) {
+      state.opponentName = oppName;
+      if (MP.onOpponentName) MP.onOpponentName(oppName);
+    }
     recomputePresence();
   });
   if (state.staleCheckTimer) clearInterval(state.staleCheckTimer);
@@ -123,10 +142,16 @@ function attachChatListener() {
 
 function presenceField() { return state.role === "host" ? "hostPresence" : "guestPresence"; }
 
+function presenceValue(online) {
+  const value = { online, lastSeen: serverTimestamp() };
+  if (state.myName) value.name = state.myName;
+  return value;
+}
+
 function sendHeartbeat(online) {
   if (!state.roomCode) return;
   updateDoc(doc(db, "rooms", state.roomCode), {
-    [presenceField()]: { online, lastSeen: serverTimestamp() },
+    [presenceField()]: presenceValue(online),
     updatedAt: serverTimestamp(),
   }).catch(() => {});
 }
@@ -154,7 +179,7 @@ async function enterRoom(code, data) {
       await updateDoc(doc(db, "rooms", code), {
         guestUid: myUid,
         status: "active",
-        guestPresence: { online: true, lastSeen: serverTimestamp() },
+        guestPresence: presenceValue(true),
         updatedAt: serverTimestamp(),
       });
     } catch (err) {
@@ -176,6 +201,7 @@ async function enterRoom(code, data) {
   state.appliedPly = -1;
   state.sentPlies = new Set();
   state.finishedNotified = false;
+  state.opponentName = "";
   state.sawGuest = !!data.guestUid || state.role === "guest";
   state.opponentOnline = false;
   state.lastOppPresence = null;
@@ -195,7 +221,7 @@ function freshRoomDoc(hostUid) {
     result: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-    hostPresence: { online: true, lastSeen: serverTimestamp() },
+    hostPresence: presenceValue(true),
     guestPresence: { online: false, lastSeen: serverTimestamp() },
   };
 }
@@ -313,11 +339,16 @@ export function leaveRoom() {
   state.sentPlies = new Set();
   state.roomCreatedAtMs = 0;
   state.finishedNotified = false;
+  state.opponentName = "";
   state.opponentOnline = false;
   state.lastOppPresence = null;
   state.sawGuest = false;
 }
 
-Object.assign(MP, { createRoom, joinRoom, quickPlay, sendMove, sendChat, resign, leaveRoom });
+export function setName(name) {
+  state.myName = cleanName(name);
+}
+
+Object.assign(MP, { setName, createRoom, joinRoom, quickPlay, sendMove, sendChat, resign, leaveRoom });
 window.MP = MP;
 window.dispatchEvent(new CustomEvent("mp-ready"));
